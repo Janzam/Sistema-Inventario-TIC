@@ -1,0 +1,34 @@
+# --- Python / Django ---
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+db.sqlite3
+media/
+staticfiles/
+
+# --- Entornos Virtuales ---
+venv/
+env/
+ENV/
+bin/
+lib/
+include/
+
+# --- Node / React ---
+node_modules/
+dist/
+build/
+.eslintcache
+*.log
+
+# --- IDEs / Editores ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# --- Archivos Temporales ---
+*.tmp
+.cache/
