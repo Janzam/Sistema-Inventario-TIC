@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Layers } from 'lucide-react';
 import api from '../api';
+import { useToast } from './Toast';
 
 const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCategory, preselectedCategoryId, preselectedSubcatId }) => {
+  const { showToast } = useToast();
   const initialState = {
     // ... (campos existentes se mantienen igual)
     nombre_equipo: '', 
@@ -23,6 +25,8 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
   const [categories, setCategories] = useState([]);
   const [selectedCatId, setSelectedCatId] = useState('');
   const [subcategories, setSubcategories] = useState([]);
+  const [personas, setPersonas] = useState([]);
+  const [hasActivoFijo, setHasActivoFijo] = useState(true);
 
   useEffect(() => {
     const fetchCats = async () => {
@@ -33,7 +37,18 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
         console.error("Error al cargar categorías", err);
       }
     };
-    if (isOpen) fetchCats();
+    const fetchPersonas = async () => {
+      try {
+        const res = await api.get('personas/');
+        setPersonas(res.data);
+      } catch (err) {
+        console.error("Error al cargar personas", err);
+      }
+    };
+    if (isOpen) {
+      fetchCats();
+      fetchPersonas();
+    }
   }, [isOpen]);
 
   useEffect(() => {
@@ -58,11 +73,13 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
         fecha_baja: equipoInicial.fecha_baja || '',
         subcategoria: equipoInicial.subcategoria || ''
       });
+      setHasActivoFijo(!!equipoInicial.activo_fijo && equipoInicial.activo_fijo !== 'SIN ACTIVO FIJO');
       if (equipoInicial.subcategoria_detalle) {
         setSelectedCatId(equipoInicial.subcategoria_detalle.category_id || equipoInicial.subcategoria_detalle.categoria);
       }
     } else {
       setFormData(initialState);
+      setHasActivoFijo(true);
       
       // Lógica de preselección robusta
       const catId = preselectedCategoryId || preselectedCategory?.id;
@@ -84,29 +101,43 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
 
     const dataToSend = {
       ...formData,
-      nombre_equipo: formData.nombre_equipo.toUpperCase().trim(),
-      serie: formData.serie.toUpperCase().trim(),
-      activo_fijo: formData.activo_fijo?.trim() || null,
+      nombre_equipo: formData.nombre_equipo?.toUpperCase().trim(),
+      serie: formData.serie?.toUpperCase().trim(),
+      activo_fijo: hasActivoFijo ? (formData.activo_fijo?.toUpperCase().trim() || null) : null,
       subcategoria: formData.subcategoria || null,
-      marca: formData.marca?.trim() || null,
-      modelo: formData.modelo?.trim() || null,
-      usuario_asignado: formData.usuario_asignado?.trim() || null,
-      departamento: formData.departamento?.trim() || null,
+      marca: formData.marca?.toUpperCase().trim() || null,
+      modelo: formData.modelo?.toUpperCase().trim() || null,
+      usuario_asignado: formData.usuario_asignado?.toUpperCase().trim() || null,
+      departamento: formData.departamento?.toUpperCase().trim() || null,
       fecha_baja: formData.fecha_baja || null, 
-      novedad: formData.novedad?.trim() || 'Sin novedad'
+      novedad: formData.novedad?.toUpperCase().trim() || 'SIN NOVEDAD'
     };
 
     try {
       if (equipoInicial) {
         await api.put(`equipos/${equipoInicial.id}/`, dataToSend);
+        showToast("Equipo actualizado correctamente", "success");
+        onRefresh();
+        onClose();
       } else {
         await api.post('equipos/', dataToSend);
+        showToast("Equipo registrado con éxito", "success");
+        onRefresh();
+        // No cerramos el modal, solo limpiamos para seguir ingresando
+        setFormData(initialState);
+        // Si queremos mantener la categoría y subcategoría para agilizar:
+        if (dataToSend.subcategoria) {
+            setFormData(prev => ({...prev, subcategoria: dataToSend.subcategoria}));
+        }
       }
-      onRefresh();
-      onClose();
     } catch (error) {
-      console.error("Detalle del error:", error.response?.data);
-      alert("Error al guardar el equipo. Revisa los campos obligatorios.");
+      const data = error.response?.data;
+      let msg = "Error al guardar el equipo.";
+      if (data?.serie) msg = data.serie[0];
+      else if (data?.activo_fijo) msg = data.activo_fijo[0];
+      else if (data?.non_field_errors) msg = data.non_field_errors[0];
+      
+      showToast(msg, "error");
     }
   };
 
@@ -179,32 +210,71 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
                 value={formData.modelo} onChange={(e) => setFormData({...formData, modelo: e.target.value})} />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Activo Fijo ID</label>
-              <input className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white"
-                value={formData.activo_fijo} onChange={(e) => setFormData({...formData, activo_fijo: e.target.value})} />
+              <div className="flex items-center justify-between ml-2 mb-1">
+                <label className="text-[10px] font-black text-gray-500 uppercase">Activo Fijo</label>
+                <button 
+                  type="button"
+                  onClick={() => setHasActivoFijo(!hasActivoFijo)}
+                  className={`px-3 py-1 rounded-full text-[8px] font-black uppercase transition-all ${hasActivoFijo ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-500'}`}
+                >
+                  {hasActivoFijo ? 'Con Activo' : 'Sin Activo'}
+                </button>
+              </div>
+              {hasActivoFijo ? (
+                <input 
+                  required={hasActivoFijo}
+                  className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white animate-in slide-in-from-top-1 duration-300"
+                  placeholder="Ingrese el código de activo fijo"
+                  value={formData.activo_fijo === 'SIN ACTIVO FIJO' ? '' : formData.activo_fijo} 
+                  onChange={(e) => setFormData({...formData, activo_fijo: e.target.value})} 
+                />
+              ) : (
+                <div className="w-full bg-[#151521]/50 border border-dashed border-gray-800 rounded-2xl px-5 py-3 text-gray-600 text-[10px] font-bold uppercase italic text-center">
+                  Sin Activo Fijo
+                </div>
+              )}
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Estado</label>
-              <select 
-                className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white appearance-none"
-                value={formData.estado}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setFormData({
-                    ...formData, 
-                    estado: val,
-                    ...(val === 'BAJA' && !formData.fecha_baja ? { fecha_baja: new Date().toISOString().split('T')[0] } : {})
-                  });
-                }}
-              >
-                <option value="NUEVO">Nuevo</option>
-                <option value="DISPONIBLE">En Bodega (Disponible)</option>
-                <option value="ASIGNADO">Asignado</option>
-                <option value="REPARACION">En Reparación</option>
-                <option value="BAJA">Baja</option>
-              </select>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Estado</label>
+                <select 
+                  className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white appearance-none"
+                  value={formData.estado}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({
+                      ...formData, 
+                      estado: val,
+                      ...(val === 'BAJA' && !formData.fecha_baja ? { fecha_baja: new Date().toISOString().split('T')[0] } : {})
+                    });
+                  }}
+                >
+                  <option value="NUEVO">Nuevo</option>
+                  <option value="DISPONIBLE">En Bodega (Disponible)</option>
+                  <option value="ASIGNADO">Asignado</option>
+                  <option value="REPARACION">En Reparación</option>
+                  <option value="BAJA">Baja</option>
+                </select>
+              </div>
             </div>
-          </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-white/[0.02] rounded-[2rem] border border-white/5">
+               <div className="col-span-full">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Fechas y Control</p>
+               </div>
+               <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Fecha Ingreso (Inst.)</label>
+                  <input type="date" className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white"
+                    value={formData.fecha_ingreso || ''} onChange={(e) => setFormData({...formData, fecha_ingreso: e.target.value})} />
+               </div>
+               {equipoInicial && (
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Fecha Registro (Sistema)</label>
+                    <div className="w-full bg-[#151521]/50 border border-gray-800 rounded-2xl px-5 py-3 text-gray-500 font-mono text-[11px]">
+                      {new Date(equipoInicial.fecha_registro).toLocaleString()}
+                    </div>
+                 </div>
+               )}
+            </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-indigo-500/5 rounded-[2rem] border border-indigo-500/10">
              <div className="col-span-full">
@@ -212,9 +282,16 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
              </div>
              <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Usuario / Responsable</label>
-                <input className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white"
-                  placeholder="Nombre del usuario"
-                  value={formData.usuario_asignado} onChange={(e) => setFormData({...formData, usuario_asignado: e.target.value})} />
+                <select 
+                  className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white appearance-none focus:border-indigo-500/50 outline-none transition-all"
+                  value={formData.usuario_asignado || ''} 
+                  onChange={(e) => setFormData({...formData, usuario_asignado: e.target.value})}
+                >
+                  <option value="">SIN ASIGNAR</option>
+                  {personas.map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
              </div>
              <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Departamento</label>
@@ -243,11 +320,13 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
             </div>
           )}
 
-          <div className="flex gap-4 pt-4 sticky bottom-0 bg-[#1e1e2d] py-4 border-t border-gray-800/50 mt-auto">
-            <button type="button" onClick={onClose} className="flex-1 bg-gray-800 text-gray-400 font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-gray-700">Cancelar</button>
-            <button type="submit" className="flex-[2] bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 shadow-xl text-[10px] uppercase tracking-widest transition-all">
-              <Save size={18} className="inline mr-2" /> {equipoInicial ? 'Guardar Cambios' : 'Registrar Equipo'}
-            </button>
+          <div className="flex flex-col gap-4 pt-4 sticky bottom-0 bg-[#1e1e2d] py-4 border-t border-gray-800/50 mt-auto">
+            <div className="flex gap-4">
+              <button type="button" onClick={onClose} className="flex-1 bg-gray-800 text-gray-400 font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-gray-700">Cancelar</button>
+              <button type="submit" className="flex-[2] bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 shadow-xl text-[10px] uppercase tracking-widest transition-all">
+                <Save size={18} className="inline mr-2" /> {equipoInicial ? 'Guardar Cambios' : 'Registrar Equipo'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

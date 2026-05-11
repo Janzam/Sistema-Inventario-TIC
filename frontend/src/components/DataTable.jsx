@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Plus, Search, Trash2, UserCheck, Wrench, Calendar, Box, AlertTriangle } from 'lucide-react';
+import { Edit, Plus, Search, Trash2, UserCheck, Wrench, Calendar, Box, AlertTriangle, Upload, FileDown } from 'lucide-react';
 import api from '../api';
 import EquipoModal from './EquipoModal';
+import { useToast } from './Toast';
 
 // ── Mini-modal para dar de baja ───────────────────────────────────────────────
 const BajaModal = ({ equipo, onConfirm, onCancel }) => {
@@ -79,6 +80,32 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
       setSelectedEquipo(null);
     } else {
       setIsModalOpen(true);
+    }
+  };
+
+  const { showToast } = useToast();
+
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      showToast("Procesando importación...", "info");
+      const res = await api.post('equipos/import_excel/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      showToast(res.data.message, "success");
+      if (res.data.errors && res.data.errors.length > 0) {
+        console.warn("Errores de importación:", res.data.errors);
+        showToast(`Se saltaron algunas filas por errores.`, "warning");
+      }
+      handleRefresh();
+      e.target.value = '';
+    } catch (err) {
+      showToast("Error al importar el archivo", "error");
     }
   };
 
@@ -215,6 +242,10 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
         </div>
         
         <div className="flex gap-3">
+          <label className="bg-emerald-600 px-5 py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-700 shadow-lg transition-all cursor-pointer">
+            <Upload size={16} /> IMPORTAR EXCEL
+            <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImport} />
+          </label>
           <button onClick={() => { setSelectedEquipo(null); setIsModalOpen(true); }} 
             className="bg-indigo-600 px-5 py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 shadow-lg transition-all">
             <Plus size={16} /> NUEVO EQUIPO
@@ -271,7 +302,7 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
                     </span>
                 </td>
                 <td className="px-6 py-4 text-[10px] font-bold uppercase text-gray-300">
-                  {item.estado === 'DISPONIBLE' ? 'BODEGA CENTRAL' : (item.usuario_asignado || 'NO ASIGNADO')}
+                  {item.estado === 'DISPONIBLE' ? 'BODEGA CENTRAL' : (item.usuario_asignado_detalle?.nombre || 'NO ASIGNADO')}
                 </td>
                 <td className="px-6 py-4 flex justify-center gap-1">
                     <button onClick={() => { setSelectedEquipo({...item, estado: 'ASIGNADO'}); setIsEditModalOpen(true); }} className="p-2 text-sky-400 hover:bg-sky-400/10 rounded-lg transition-all" title="Asignar Equipo (Completar Datos)"><UserCheck size={16}/></button>

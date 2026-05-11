@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useStock } from '../context/StockContext';
 import { 
   LayoutDashboard, Database, FileText, AlertTriangle, 
-  Laptop, Settings2, Trash2, ChevronDown, ChevronRight, FileSpreadsheet, UserCheck, Wrench, Box
+  Laptop, Settings2, Trash2, ChevronDown, ChevronRight, FileSpreadsheet, UserCheck, Wrench, Box, Shield, Lock, Layers
 } from 'lucide-react';
 import api from '../api';
 
-const Sidebar = ({ setView, currentView, equiposReales = [] }) => {
+const Sidebar = ({ setView, currentView, equiposReales = [], onSelectCategory }) => {
   const { stockLimit, setStockLimit } = useStock();
   const [categories, setCategories] = useState([]);
   const [showCatReports, setShowCatReports] = useState(false);
@@ -14,7 +14,7 @@ const Sidebar = ({ setView, currentView, equiposReales = [] }) => {
   useEffect(() => {
     const fetchCats = async () => {
       try {
-        const res = await api.get('categorias/');
+        const res = await api.get('categorias/with_stats/');
         setCategories(res.data);
       } catch (err) {
         console.error(err);
@@ -87,6 +87,38 @@ const Sidebar = ({ setView, currentView, equiposReales = [] }) => {
         </button>
 
         <button 
+          onClick={() => setView('security')} 
+          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
+            currentView === 'security' ? 'bg-indigo-600 text-white shadow-xl border-l-4 border-white/30' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
+          }`}
+        >
+          <Shield size={20}/> SEGURIDAD Y ACCESOS
+        </button>
+
+        <button 
+          onClick={() => setView('category_config')} 
+          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
+            currentView === 'category_config' ? 'bg-indigo-600 text-white shadow-xl border-l-4 border-white/30' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
+          }`}
+        >
+          <Settings2 size={20}/> CONFIG. CATEGORÍAS
+        </button>
+
+        <div className="pt-6 pb-2 px-5 text-[10px] font-black text-gray-600 uppercase tracking-widest">
+           Explorar por Categoría
+        </div>
+
+        {categories.map(cat => (
+          <CategoryAccordion 
+            key={cat.id} 
+            category={cat} 
+            setView={setView} 
+            currentView={currentView}
+            onSelectCategory={onSelectCategory}
+          />
+        ))}
+
+        <button 
           onClick={() => setView('bajas')} 
           className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
             currentView === 'bajas' ? 'bg-red-600 text-white shadow-xl' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
@@ -120,6 +152,15 @@ const Sidebar = ({ setView, currentView, equiposReales = [] }) => {
           }`}
         >
           <Box size={20}/> EQUIPOS DISPONIBLES
+        </button>
+
+        <button 
+          onClick={() => setView('security')} 
+          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
+            currentView === 'security' ? 'bg-indigo-600 text-white shadow-xl border-l-4 border-white/30' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
+          }`}
+        >
+          <Shield size={20}/> SEGURIDAD Y ACCESOS
         </button>
 
         <div className="pt-6 pb-2 px-5 text-[10px] font-black text-gray-600 uppercase tracking-widest">
@@ -216,6 +257,45 @@ const Sidebar = ({ setView, currentView, equiposReales = [] }) => {
         </div>
       </div>
     </aside>
+  );
+};
+
+const CategoryAccordion = ({ category, setView, currentView, onSelectCategory }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="mb-1">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-5 py-3 rounded-2xl text-[10px] font-black text-gray-400 hover:bg-gray-800/50 transition-all uppercase group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: category.color }}></div>
+          <span className="group-hover:text-white transition-colors">{category.nombre}</span>
+        </div>
+        {isOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
+      </button>
+      
+      {isOpen && (
+        <div className="ml-8 mt-1 space-y-1 animate-in slide-in-from-top-1 duration-300">
+          {category.subcategorias?.map(sub => (
+            <button
+              key={sub.id}
+              onClick={() => {
+                if (onSelectCategory) {
+                  onSelectCategory(category);
+                  // Podríamos filtrar directamente por subcategoría aquí si quisiéramos, 
+                  // pero por ahora vamos a la vista de la categoría padre
+                }
+              }}
+              className="w-full text-left px-4 py-2 text-[9px] font-bold text-gray-500 hover:text-indigo-400 uppercase truncate"
+            >
+              • {sub.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 

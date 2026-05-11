@@ -3,6 +3,8 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import DataTable from './components/DataTable';
 import CategoryView from './components/CategoryView';
+import SecurityModule from './components/SecurityModule';
+import CategoryManager from './components/CategoryManager';
 import Header from './components/Header'; 
 import Login from './components/Login'; 
 import api from './api'; 
@@ -91,12 +93,23 @@ function App() {
     if (view === 'category_details') {
       return <CategoryView category={selectedCategory} onBack={() => { setView('dashboard'); setSelectedCategory(null); }} />;
     }
+    if (view === 'security') {
+      return <SecurityModule />;
+    }
+    if (view === 'category_config') {
+      return <CategoryManager />;
+    }
     return <DataTable currentView={view} onRefresh={fetchEquipos} searchTerm={searchTerm} />;
   };
 
   return (
     <div className="flex bg-[#151521] min-h-screen font-sans text-gray-200 overflow-hidden italic">
-      <Sidebar setView={setView} currentView={view} equiposReales={equipos} />
+      <Sidebar 
+  setView={setView} 
+  currentView={view} 
+  equiposReales={equipos} 
+  onSelectCategory={handleSelectCategory}
+/>
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Header 
           equipos={equipos} 

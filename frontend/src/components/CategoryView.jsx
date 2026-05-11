@@ -5,6 +5,8 @@ import DataTable from './DataTable';
 const CategoryView = ({ category, onBack }) => {
   const [selectedSubcat, setSelectedSubcat] = useState(null);
 
+  if (!category) return null;
+
   // El DataTable ya maneja el filtrado si le pasamos los props correctos
   // Necesitamos que DataTable acepte cat_id o subcat_id
 
