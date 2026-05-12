@@ -255,7 +255,7 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
         )}
       </div>
 
-      <div className="bg-[#1e1e2d] rounded-[2rem] border border-gray-800 overflow-hidden shadow-2xl">
+      <div className="bg-[#1e1e2d] rounded-[2rem] border border-gray-800 overflow-x-auto shadow-2xl scrollbar-hide">
         <table className="w-full text-left">
           <thead>
             <tr className="bg-gray-800/30 text-gray-500 text-[10px] uppercase font-black tracking-widest border-b border-gray-800">

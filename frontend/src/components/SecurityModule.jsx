@@ -129,8 +129,8 @@ const SecurityModule = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div className="lg:col-span-3 xl:col-span-4 space-y-6">
           {/* Barra de búsqueda */}
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
@@ -144,7 +144,7 @@ const SecurityModule = () => {
           </div>
 
           {/* Tabla de Personas */}
-          <div className="bg-[#1e1e2d] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
+          <div className="bg-[#1e1e2d] border border-gray-800 rounded-[2.5rem] overflow-x-auto shadow-2xl scrollbar-hide">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-800/30 text-gray-500 text-[10px] uppercase font-black tracking-widest border-b border-gray-800">

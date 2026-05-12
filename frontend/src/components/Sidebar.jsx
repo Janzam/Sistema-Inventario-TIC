@@ -26,7 +26,10 @@ const Sidebar = ({ setView, currentView, equiposReales = [], onSelectCategory, u
   const bajoStock = Object.entries(
     equiposReales
       .filter(eq => eq.estado === 'DISPONIBLE')
-      .reduce((acc, eq) => ({ ...acc, [eq.nombre_equipo]: (acc[eq.nombre_equipo] || 0) + 1 }), {})
+      .reduce((acc, eq) => {
+        acc[eq.nombre_equipo] = (acc[eq.nombre_equipo] || 0) + 1;
+        return acc;
+      }, {})
   )
     .map(([name, count]) => ({ name, count }))
     .filter(item => item.count < stockLimit);

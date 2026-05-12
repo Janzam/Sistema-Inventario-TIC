@@ -119,23 +119,35 @@ class CategoriaViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def with_stats(self, request):
-        categorias = Categoria.objects.all()
+        user = request.user
+        role = getattr(getattr(user, 'persona', None), 'rol', 'VIEWER')
+        
+        # Definir filtro de equipos según rol
+        equipo_filter = Q()
+        if role == 'VIEWER':
+            persona = getattr(user, 'persona', None)
+            if persona:
+                equipo_filter = Q(subcategorias__equipos__usuario_asignado=persona)
+            else:
+                equipo_filter = Q(id__lt=0) # Forzar 0
+        else:
+            # Admins/Técnicos ven todo el conteo
+            equipo_filter = Q(subcategorias__equipos__isnull=False)
+
+        # Optimizamos con annotation para evitar el loop N+1
+        categorias = Categoria.objects.annotate(
+            total_items=Count('subcategorias__equipos', filter=equipo_filter, distinct=True)
+        ).prefetch_related('subcategorias')
+
         result = []
         for cat in categorias:
-            subcats = cat.subcategorias.all()
-            # Contar equipos por subcategoría que pertenezcan al usuario
-            total_equipos = Equipo.objects.filter(
-                subcategoria__categoria=cat,
-                creado_por=request.user
-            ).count()
-            
             result.append({
                 "id": cat.id,
                 "nombre": cat.nombre,
                 "imagen": cat.imagen,
                 "color": cat.color,
-                "total_equipos": total_equipos,
-                "subcategorias": SubcategoriaSerializer(subcats, many=True).data
+                "total_equipos": cat.total_items,
+                "subcategorias": SubcategoriaSerializer(cat.subcategorias.all(), many=True).data
             })
         return Response(result)
 
@@ -210,7 +222,12 @@ class EquipoViewSet(viewsets.ModelViewSet):
             return Response({"error": "No autenticado"}, status=401)
 
         try:
-            queryset = Equipo.objects.filter(creado_por=request.user)
+            role = getattr(getattr(request.user, 'persona', None), 'rol', 'VIEWER')
+            if role in ['ADMIN', 'TECNICO']:
+                queryset = Equipo.objects.all()
+            else:
+                persona = getattr(request.user, 'persona', None)
+                queryset = Equipo.objects.filter(usuario_asignado=persona) if persona else Equipo.objects.none()
 
             estado = request.query_params.get('estado')
             cat_id = request.query_params.get('categoria')

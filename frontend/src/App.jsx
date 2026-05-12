@@ -89,7 +89,7 @@ function App() {
 
   const renderContent = () => {
     if (view === 'dashboard') {
-      return <Dashboard onSelectCategory={handleSelectCategory} onAddToCategory={handleAddToCategory} />;
+      return <Dashboard onSelectCategory={handleSelectCategory} onAddToCategory={handleAddToCategory} user={user} />;
     }
     if (view === 'category_details') {
       return (

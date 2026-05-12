@@ -4,7 +4,7 @@ import api from '../api';
 import CategoryModal from './CategoryModal';
 import { useToast } from './Toast';
 
-const Dashboard = ({ onSelectCategory, onAddToCategory }) => {
+const Dashboard = ({ onSelectCategory, onAddToCategory, user }) => {
   const { showToast } = useToast();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,20 +82,24 @@ const Dashboard = ({ onSelectCategory, onAddToCategory }) => {
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <label className="flex items-center justify-center gap-3 bg-emerald-600/10 hover:bg-emerald-600/20 backdrop-blur-md border border-emerald-500/20 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:border-emerald-500/50 group cursor-pointer">
-              <Upload size={18} className="text-emerald-500 group-hover:scale-110 transition-transform" />
-              Importar Inventario
-              <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImport} />
-            </label>
-            <button 
-              onClick={() => setIsCatModalOpen(true)}
-              className="flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:border-indigo-500/50 group"
-            >
-              <FolderPlus size={18} className="text-indigo-500 group-hover:scale-110 transition-transform" />
-              Registrar Categoría
-            </button>
-          </div>
+          {(user?.rol === 'ADMIN' || user?.rol === 'TECNICO') && (
+            <div className="flex gap-3">
+              <label className="flex items-center justify-center gap-3 bg-emerald-600/10 hover:bg-emerald-600/20 backdrop-blur-md border border-emerald-500/20 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:border-emerald-500/50 group cursor-pointer">
+                <Upload size={18} className="text-emerald-500 group-hover:scale-110 transition-transform" />
+                Importar Inventario
+                <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImport} />
+              </label>
+              {user?.rol === 'ADMIN' && (
+                <button 
+                  onClick={() => setIsCatModalOpen(true)}
+                  className="flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:border-indigo-500/50 group"
+                >
+                  <FolderPlus size={18} className="text-indigo-500 group-hover:scale-110 transition-transform" />
+                  Registrar Categoría
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
