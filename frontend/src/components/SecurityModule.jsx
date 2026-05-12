@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, UserPlus, Users, Search, Mail, Phone, Fingerprint, Key, Check, X, Edit, Trash2 } from 'lucide-react';
+import { Shield, UserPlus, Users, Search, Mail, Phone, Fingerprint, Key, Check, X, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import api from '../api';
 import { useToast } from './Toast';
 
@@ -14,6 +14,7 @@ const SecurityModule = () => {
   const [formData, setFormData] = useState({ nombre: '', identificacion: '', email: '', telefono: '', direccion: '', rol: 'VIEWER' });
   const [userFormData, setUserFormData] = useState({ username: '', password: '', rol: 'VIEWER' });
   const [pendingUsers, setPendingUsers] = useState([]);
+  const [showUserPassword, setShowUserPassword] = useState(false);
 
   const fetchPersonas = async () => {
     setLoading(true);
@@ -352,10 +353,17 @@ const SecurityModule = () => {
                   <option value="ADMIN">Administrador</option>
                 </select>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 relative">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Contraseña Temporal *</label>
-                <input required type="password" placeholder="••••••••" className="w-full bg-[#151521] border border-gray-800 rounded-2xl px-5 py-3 text-white"
+                <input required type={showUserPassword ? "text" : "password"} placeholder="••••••••" className="w-full bg-[#151521] border border-gray-800 rounded-2xl px-5 py-3 text-white pr-12"
                   value={userFormData.password} onChange={(e) => setUserFormData({...userFormData, password: e.target.value})} />
+                <button
+                  type="button"
+                  onClick={() => setShowUserPassword(!showUserPassword)}
+                  className="absolute right-4 bottom-3.5 text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  {showUserPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
               <div className="flex gap-4 pt-4">
                 <button type="button" onClick={() => setIsUserModalOpen(false)} className="flex-1 bg-gray-800 text-gray-400 font-black py-4 rounded-2xl text-[10px] uppercase">Cancelar</button>

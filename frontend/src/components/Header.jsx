@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Search, Package, ChevronDown, User, Lock, LogOut, X, Camera, Upload } from 'lucide-react';
+import { Bell, Search, Package, ChevronDown, User, Lock, LogOut, X, Camera, Upload, Eye, EyeOff } from 'lucide-react';
 import { useStock } from '../context/StockContext';
 
 const Header = ({ equipos = [], onSearch, user, onLogout, onUpdateUser }) => {
@@ -10,6 +10,8 @@ const Header = ({ equipos = [], onSearch, user, onLogout, onUpdateUser }) => {
   const [showPassModal, setShowPassModal] = useState(false);
   const [editData, setEditData] = useState({ name: user?.name, email: user?.email, picture: user?.picture });
   const [passData, setPassData] = useState({ old: '', new: '' });
+  const [showOldPass, setShowOldPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
 
   const handleSavePass = async () => {
     if (!passData.old || !passData.new) return alert("Ambas contraseñas son requeridas");
@@ -207,20 +209,38 @@ const Header = ({ equipos = [], onSearch, user, onLogout, onUpdateUser }) => {
       {showPassModal && (
         <Modal title="Cambiar Contraseña" onClose={() => setShowPassModal(false)} onSave={handleSavePass}>
           <div className="space-y-4">
-            <input 
-              type="password" 
-              placeholder="Contraseña Actual" 
-              value={passData.old}
-              onChange={(e) => setPassData({...passData, old: e.target.value})}
-              className="w-full bg-[#151521] border border-gray-800 rounded-xl p-3 text-sm text-white outline-none focus:border-indigo-500 font-bold" 
-            />
-            <input 
-              type="password" 
-              placeholder="Nueva Contraseña" 
-              value={passData.new}
-              onChange={(e) => setPassData({...passData, new: e.target.value})}
-              className="w-full bg-[#151521] border border-gray-800 rounded-xl p-3 text-sm text-white outline-none focus:border-indigo-500 font-bold" 
-            />
+            <div className="relative">
+              <input 
+                type={showOldPass ? "text" : "password"} 
+                placeholder="Contraseña Actual" 
+                value={passData.old}
+                onChange={(e) => setPassData({...passData, old: e.target.value})}
+                className="w-full bg-[#151521] border border-gray-800 rounded-xl p-3 pr-10 text-sm text-white outline-none focus:border-indigo-500 font-bold" 
+              />
+              <button
+                type="button"
+                onClick={() => setShowOldPass(!showOldPass)}
+                className="absolute right-3 top-3 text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                {showOldPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <div className="relative">
+              <input 
+                type={showNewPass ? "text" : "password"} 
+                placeholder="Nueva Contraseña" 
+                value={passData.new}
+                onChange={(e) => setPassData({...passData, new: e.target.value})}
+                className="w-full bg-[#151521] border border-gray-800 rounded-xl p-3 pr-10 text-sm text-white outline-none focus:border-indigo-500 font-bold" 
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPass(!showNewPass)}
+                className="absolute right-3 top-3 text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
         </Modal>
       )}

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Laptop, User, Lock, Mail } from 'lucide-react';
+import { Laptop, User, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import api from '../api';
 
 const Login = ({ onLoginSuccess }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({ identifier: '', password: '', name: '' });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleTraditionalAction = async (e) => {
     e.preventDefault();
@@ -101,13 +102,20 @@ const Login = ({ onLoginSuccess }) => {
           <div className="relative">
             <Lock className="absolute left-3 top-3 text-gray-500" size={18} />
             <input 
-              type="password" 
+              type={showPassword ? "text" : "password"} 
               placeholder="CONTRASEÑA" 
               required 
-              className="w-full bg-[#151521] border border-gray-800 rounded-xl py-3 pl-10 text-sm text-white focus:border-indigo-500 outline-none font-bold"
+              className="w-full bg-[#151521] border border-gray-800 rounded-xl py-3 pl-10 pr-10 text-sm text-white focus:border-indigo-500 outline-none font-bold"
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})} 
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-3 text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
 
           <button 
