@@ -104,19 +104,21 @@ const Sidebar = ({ setView, currentView, equiposReales = [], onSelectCategory })
           <Settings2 size={20}/> CONFIG. CATEGORÍAS
         </button>
 
-        <div className="pt-6 pb-2 px-5 text-[10px] font-black text-gray-600 uppercase tracking-widest">
+        <div className="pt-8 pb-3 px-6 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
            Explorar por Categoría
         </div>
-
-        {categories.map(cat => (
-          <CategoryAccordion 
-            key={cat.id} 
-            category={cat} 
-            setView={setView} 
-            currentView={currentView}
-            onSelectCategory={onSelectCategory}
-          />
-        ))}
+        
+        <div className="space-y-1">
+          {categories.map(cat => (
+            <CategoryAccordion 
+              key={cat.id} 
+              category={cat} 
+              setView={setView} 
+              currentView={currentView}
+              onSelectCategory={onSelectCategory}
+            />
+          ))}
+        </div>
 
         <button 
           onClick={() => setView('bajas')} 
@@ -264,37 +266,52 @@ const CategoryAccordion = ({ category, setView, currentView, onSelectCategory })
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="mb-1">
+    <div className="px-2">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-5 py-3 rounded-2xl text-[10px] font-black text-gray-400 hover:bg-gray-800/50 transition-all uppercase group"
+        className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all duration-300 group ${
+          isOpen ? 'bg-gray-800/30' : 'hover:bg-gray-800/20'
+        }`}
       >
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: category.color }}></div>
-          <span className="group-hover:text-white transition-colors">{category.nombre}</span>
+          <div 
+            className={`w-2 h-2 rounded-full shadow-lg transition-transform duration-500 ${isOpen ? 'scale-125' : 'scale-100'}`} 
+            style={{ backgroundColor: category.color, boxShadow: `0 0 10px ${category.color}40` }}
+          ></div>
+          <span className={`text-[10px] font-black uppercase tracking-tight transition-colors ${
+            isOpen ? 'text-white' : 'text-gray-400 group-hover:text-gray-300'
+          }`}>
+            {category.nombre}
+          </span>
         </div>
-        {isOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
+        <div className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-white' : 'text-gray-600'}`}>
+          <ChevronDown size={14}/>
+        </div>
       </button>
       
-      {isOpen && (
-        <div className="ml-8 mt-1 space-y-1 animate-in slide-in-from-top-1 duration-300">
+      <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
+        isOpen ? 'max-h-96 opacity-100 mt-1' : 'max-h-0 opacity-0'
+      }`}>
+        <div className="ml-7 pl-4 border-l border-gray-800/50 space-y-0.5 py-1">
           {category.subcategorias?.map(sub => (
             <button
               key={sub.id}
               onClick={() => {
                 if (onSelectCategory) {
-                  onSelectCategory(category);
-                  // Podríamos filtrar directamente por subcategoría aquí si quisiéramos, 
-                  // pero por ahora vamos a la vista de la categoría padre
+                  onSelectCategory(category, sub);
                 }
               }}
-              className="w-full text-left px-4 py-2 text-[9px] font-bold text-gray-500 hover:text-indigo-400 uppercase truncate"
+              className="w-full text-left px-4 py-2 text-[9px] font-bold text-gray-500 hover:text-indigo-400 hover:bg-indigo-500/5 rounded-xl transition-all uppercase truncate flex items-center gap-2 group/sub"
             >
-              • {sub.nombre}
+              <div className="w-1 h-1 bg-gray-700 rounded-full group-hover/sub:bg-indigo-500 transition-colors"></div>
+              {sub.nombre}
             </button>
           ))}
+          {category.subcategorias?.length === 0 && (
+            <p className="px-4 py-2 text-[8px] text-gray-700 italic uppercase">Sin subcategorías</p>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

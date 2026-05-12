@@ -13,6 +13,7 @@ import { useStock } from './context/StockContext';
 function App() {
   const [view, setView] = useState('dashboard');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState(null);
   const [equipos, setEquipos] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,9 +74,9 @@ function App() {
     }
   };
 
-  const handleSelectCategory = (cat) => {
+  const handleSelectCategory = (cat, subcat = null) => {
      setSelectedCategory(cat);
-     setView('dashboard'); // Force a refresh if needed or just switch view
+     setSelectedSubcategory(subcat);
      setView('category_details');
   };
 
@@ -91,7 +92,17 @@ function App() {
       return <Dashboard onSelectCategory={handleSelectCategory} onAddToCategory={handleAddToCategory} />;
     }
     if (view === 'category_details') {
-      return <CategoryView category={selectedCategory} onBack={() => { setView('dashboard'); setSelectedCategory(null); }} />;
+      return (
+        <CategoryView 
+          category={selectedCategory} 
+          initialSubcat={selectedSubcategory}
+          onBack={() => { 
+            setView('dashboard'); 
+            setSelectedCategory(null); 
+            setSelectedSubcategory(null); 
+          }} 
+        />
+      );
     }
     if (view === 'security') {
       return <SecurityModule />;

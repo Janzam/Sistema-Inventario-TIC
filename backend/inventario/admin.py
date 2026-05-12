@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Equipo, Profile, Categoria, Subcategoria
+from .models import Equipo, Profile, Categoria, Subcategoria, Persona
 
 @admin.register(Equipo)
 class EquipoAdmin(admin.ModelAdmin):
@@ -14,6 +14,11 @@ class CategoriaAdmin(admin.ModelAdmin):
 @admin.register(Subcategoria)
 class SubcategoriaAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'categoria')
+
+@admin.register(Persona)
+class PersonaAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'identificacion', 'email', 'user')
+    search_fields = ('nombre', 'identificacion')
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):

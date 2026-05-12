@@ -7,6 +7,7 @@ router = DefaultRouter()
 router.register(r'equipos', views.EquipoViewSet, basename='equipo')
 router.register(r'categorias', views.CategoriaViewSet, basename='categoria')
 router.register(r'subcategorias', views.SubcategoriaViewSet, basename='subcategoria')
+router.register(r'personas', views.PersonaViewSet, basename='persona')
 
 urlpatterns = [
     path('', include(router.urls)),

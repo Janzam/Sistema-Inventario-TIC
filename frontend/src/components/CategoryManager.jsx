@@ -7,6 +7,7 @@ const CategoryManager = () => {
   const { showToast } = useToast();
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+  const [activeCategory, setActiveCategory] = useState(null);
   const [loading, setLoading] = useState(true);
   
   // Modals
@@ -28,6 +29,12 @@ const CategoryManager = () => {
       ]);
       setCategories(catsRes.data);
       setSubcategories(subsRes.data);
+      
+      // Update active category object if it was selected to keep it in sync
+      if (activeCategory) {
+        const updatedActive = catsRes.data.find(c => c.id === activeCategory.id);
+        setActiveCategory(updatedActive || null);
+      }
     } catch (err) {
       showToast("Error al cargar datos", "error");
     } finally {
@@ -149,12 +156,23 @@ const CategoryManager = () => {
               </thead>
               <tbody className="divide-y divide-gray-800/50">
                 {categories.map(cat => (
-                  <tr key={cat.id} className="group hover:bg-white/[0.02] transition-colors">
+                  <tr 
+                    key={cat.id} 
+                    onClick={() => setActiveCategory(cat)}
+                    className={`group cursor-pointer transition-all ${activeCategory?.id === cat.id ? 'bg-indigo-500/10' : 'hover:bg-white/[0.02]'}`}
+                  >
                     <td className="px-6 py-4">
                       <div className="w-6 h-6 rounded-lg shadow-inner border border-white/10" style={{ backgroundColor: cat.color }}></div>
                     </td>
-                    <td className="px-6 py-4 font-black uppercase text-xs italic tracking-wide text-white">{cat.nombre}</td>
                     <td className="px-6 py-4">
+                      <div className="flex items-center justify-between">
+                        <span className={`font-black uppercase text-xs italic tracking-wide ${activeCategory?.id === cat.id ? 'text-indigo-400' : 'text-white'}`}>
+                          {cat.nombre}
+                        </span>
+                        {activeCategory?.id === cat.id && <ChevronRight size={14} className="text-indigo-400" />}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => { setSelectedCat(cat); setCatForm({ nombre: cat.nombre, color: cat.color }); setIsCatModalOpen(true); }}
@@ -182,53 +200,97 @@ const CategoryManager = () => {
           <div className="p-8 border-b border-gray-800/50 flex items-center justify-between bg-white/[0.02]">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-emerald-500/20 rounded-xl text-emerald-400"><FolderPlus size={18}/></div>
-              <h3 className="text-xl font-black uppercase italic tracking-tighter">Subcategorías Específicas</h3>
+              <div>
+                <h3 className="text-xl font-black uppercase italic tracking-tighter">
+                  {activeCategory ? `Subcategorías: ${activeCategory.nombre}` : 'Subcategorías Específicas'}
+                </h3>
+                {activeCategory && (
+                  <button 
+                    onClick={() => setActiveCategory(null)}
+                    className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest hover:underline"
+                  >
+                    Ver todas las subcategorías
+                  </button>
+                )}
+              </div>
             </div>
             <button 
-              onClick={() => { setSelectedSub(null); setSubForm({ nombre: '', categoria: '' }); setIsSubModalOpen(true); }}
+              onClick={() => { 
+                setSelectedSub(null); 
+                setSubForm({ nombre: '', categoria: activeCategory?.id || '' }); 
+                setIsSubModalOpen(true); 
+              }}
               className="p-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-lg"
             >
               <Plus size={20} />
             </button>
           </div>
-          <div className="overflow-x-auto p-4">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] border-b border-gray-800">
-                  <th className="px-6 py-4">Subcategoría</th>
-                  <th className="px-6 py-4">Perteneciente a</th>
-                  <th className="px-6 py-4 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800/50">
-                {subcategories.map(sub => (
-                  <tr key={sub.id} className="group hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4 font-black uppercase text-xs italic tracking-wide text-white">{sub.nombre}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase bg-gray-800 text-gray-400 border border-gray-700">
-                        {sub.categoria_nombre}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => { setSelectedSub(sub); setSubForm({ nombre: sub.nombre, categoria: sub.categoria }); setIsSubModalOpen(true); }}
-                          className="p-2 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-all"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button 
-                          onClick={() => deleteSubcategory(sub.id)}
-                          className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+          <div className="overflow-x-auto p-4 flex-1">
+            {!activeCategory && subcategories.length > 0 && (
+              <div className="p-10 text-center space-y-4">
+                <div className="mx-auto w-16 h-16 bg-gray-800/50 rounded-full flex items-center justify-center text-gray-600">
+                  <Tag size={32} />
+                </div>
+                <p className="text-gray-500 text-sm font-bold uppercase tracking-wider">
+                  Selecciona una categoría a la izquierda para ver sus detalles
+                </p>
+                <button 
+                  onClick={() => setActiveCategory({ id: 'all' })} // Temporary trick to show all
+                  className="text-emerald-500 text-[10px] font-black uppercase tracking-[0.2em] hover:text-emerald-400 transition-colors"
+                >
+                  O haz clic aquí para ver todo
+                </button>
+              </div>
+            )}
+            
+            {(activeCategory || subcategories.length === 0) && (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] border-b border-gray-800">
+                    <th className="px-6 py-4">Subcategoría</th>
+                    {!activeCategory || activeCategory.id === 'all' ? <th className="px-6 py-4">Perteneciente a</th> : null}
+                    <th className="px-6 py-4 text-right">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-800/50">
+                  {subcategories
+                    .filter(sub => !activeCategory || activeCategory.id === 'all' || sub.categoria === activeCategory.id)
+                    .map(sub => (
+                    <tr key={sub.id} className="group hover:bg-white/[0.02] transition-colors">
+                      <td className="px-6 py-4 font-black uppercase text-xs italic tracking-wide text-white">{sub.nombre}</td>
+                      {(!activeCategory || activeCategory.id === 'all') && (
+                        <td className="px-6 py-4">
+                          <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase bg-gray-800 text-gray-400 border border-gray-700">
+                            {sub.categoria_nombre}
+                          </span>
+                        </td>
+                      )}
+                      <td className="px-6 py-4">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => { setSelectedSub(sub); setSubForm({ nombre: sub.nombre, categoria: sub.categoria }); setIsSubModalOpen(true); }}
+                            className="p-2 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-all"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button 
+                            onClick={() => deleteSubcategory(sub.id)}
+                            className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {activeCategory && subcategories.filter(sub => activeCategory.id === 'all' || sub.categoria === activeCategory.id).length === 0 && (
+              <div className="p-10 text-center">
+                <p className="text-gray-600 text-xs font-bold uppercase tracking-widest">No hay subcategorías en esta categoría</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

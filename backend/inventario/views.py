@@ -9,14 +9,52 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authtoken.models import Token
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.chart import PieChart, BarChart, Reference
-from .models import Equipo, Profile, Categoria, Subcategoria
+from .models import Equipo, Profile, Categoria, Subcategoria, Persona
 from .serializers import (
     EquipoSerializer, UserSerializer, ProfileSerializer, 
-    CategoriaSerializer, SubcategoriaSerializer
+    CategoriaSerializer, SubcategoriaSerializer, PersonaSerializer
 )
 
+# --- VISTA PARA PERSONAS ---
+class PersonaViewSet(viewsets.ModelViewSet):
+    queryset = Persona.objects.all()
+    serializer_class = PersonaSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=True, methods=['post'])
+    def create_user(self, request, pk=None):
+        persona = self.get_object()
+        if persona.user:
+            return Response({"error": "Esta persona ya tiene un usuario asociado"}, status=400)
+        
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        if not username or not password:
+            return Response({"error": "Usuario y contraseña requeridos"}, status=400)
+            
+        if User.objects.filter(username=username).exists():
+            return Response({"error": "El nombre de usuario ya existe"}, status=400)
+            
+        try:
+            user = User.objects.create_user(
+                username=username,
+                password=password,
+                email=persona.email or '',
+                first_name=persona.nombre
+            )
+            persona.user = user
+            persona.save()
+            
+            # Crear perfil
+            Profile.objects.get_or_create(user=user)
+            
+            return Response({"message": "Usuario creado y vinculado correctamente"}, status=201)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
 # --- VISTA PARA CATEGORÍAS ---
-class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
+class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
     permission_classes = [IsAuthenticated]
@@ -43,12 +81,19 @@ class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
             })
         return Response(result)
 
-class SubcategoriaViewSet(viewsets.ReadOnlyModelViewSet):
+class SubcategoriaViewSet(viewsets.ModelViewSet):
     queryset = Subcategoria.objects.all()
     serializer_class = SubcategoriaSerializer
     permission_classes = [IsAuthenticated]
 
 # --- VISTA PARA MANEJAR LOS EQUIPOS ---
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .models import Equipo, Categoria, Subcategoria, Persona
+from .serializers import EquipoSerializer
+import pandas as pd
+import io
+
 class EquipoViewSet(viewsets.ModelViewSet):
     serializer_class = EquipoSerializer
     permission_classes = [IsAuthenticated]
@@ -116,9 +161,10 @@ class EquipoViewSet(viewsets.ModelViewSet):
                 'modelo': 'MODELO',
                 'activo_fijo': 'ACTIVO FIJO ID',
                 'estado': 'ESTADO ACTUAL',
-                'usuario_asignado': 'RESPONSABLE / USUARIO',
+                'usuario_asignado__nombre': 'RESPONSABLE / USUARIO',
                 'departamento': 'DEPARTAMENTO',
-                'fecha_ingreso': 'FECHA DE INGRESO',
+                'fecha_ingreso': 'FECHA INGRESO (INST.)',
+                'fecha_baja': 'FECHA DE BAJA',
             }
 
             if estado == 'BAJA':
@@ -130,7 +176,11 @@ class EquipoViewSet(viewsets.ModelViewSet):
             # Normalizar valores: None → "", dates → string iso
             for row in data:
                 for key, val in row.items():
-                    if val is None:
+                    if key == 'activo_fijo' and (val is None or str(val).strip() == ''):
+                        row[key] = 'SIN ACTIVO FIJO'
+                    elif key == 'usuario_asignado__nombre' and (val is None or str(val).strip() == ''):
+                        row[key] = 'SIN RESPONSABLE'
+                    elif val is None:
                         row[key] = ''
                     elif isinstance(val, (date, datetime)):
                         row[key] = val.strftime('%Y-%m-%d')
@@ -267,6 +317,143 @@ class EquipoViewSet(viewsets.ModelViewSet):
             import traceback
             traceback.print_exc()
             return Response({"error": str(e)}, status=500)
+
+    @action(detail=False, methods=['post'])
+    def import_excel(self, request):
+        file = request.FILES.get('file')
+        if not file:
+            return Response({"error": "No se proporcionó ningún archivo"}, status=400)
+
+        try:
+            # Leer el archivo excel (soporta .xls, .xlsx)
+            df = pd.read_excel(file)
+            
+            # Limpiar nombres de columnas: strip, upper, y remover posibles saltos de línea
+            df.columns = [str(c).strip().upper().replace('\n', ' ') for c in df.columns]
+            
+            created_count = 0
+            errors = []
+
+            # Mapeo de columnas basado en el formato del usuario
+            mapping = {
+                'EQUIPO': 'nombre_equipo',
+                'MARCA': 'marca',
+                'SERIE': 'serie',
+                'MODELO': 'modelo',
+                'ACTIVO FIJO': 'activo_fijo',
+                'ESTADO': 'estado_raw',
+                'USUARIO': 'usuario_raw',
+                'FECHA': 'fecha_ingreso'
+            }
+
+            for index, row in df.iterrows():
+                try:
+                    data = {}
+                    for excel_col, model_field in mapping.items():
+                        # Buscar coincidencia parcial o exacta
+                        found_col = None
+                        for actual_col in df.columns:
+                            if excel_col in actual_col:
+                                found_col = actual_col
+                                break
+                        
+                        if found_col:
+                            val = row[found_col]
+                            if pd.isna(val) or str(val).strip() == '':
+                                data[model_field] = None
+                            else:
+                                data[model_field] = str(val).strip()
+
+                    # Validaciones básicas de fila
+                    if not data.get('nombre_equipo') or not data.get('serie'):
+                        continue
+
+                    # 1. Manejo de Persona (Usuario)
+                    persona = None
+                    usuario_raw = data.get('usuario_raw')
+                    if usuario_raw and usuario_raw.upper() not in ['BODEGA', 'SIN ASIGNAR', 'N/A', '----------']:
+                        nombre_persona = usuario_raw.upper()
+                        # Buscar por nombre exacto (case insensitive)
+                        persona = Persona.objects.filter(nombre__iexact=nombre_persona).first()
+                        if not persona:
+                            # Crear una persona temporal si no existe
+                            persona = Persona.objects.create(
+                                nombre=nombre_persona,
+                                identificacion=f'TEMP-{index}-{pd.Timestamp.now().strftime("%H%M%S")}'
+                            )
+
+                    # 2. Normalización de Estado
+                    estado = 'DISPONIBLE'
+                    if persona:
+                        estado = 'ASIGNADO'
+                    
+                    estado_excel = str(data.get('estado_raw', '')).upper()
+                    if 'BAJA' in estado_excel:
+                        estado = 'BAJA'
+                    elif 'REPARACION' in estado_excel or 'MANTENIMIENTO' in estado_excel:
+                        estado = 'REPARACION'
+
+                    # 3. Conversión de Fecha
+                    fecha_ing = None
+                    raw_date = data.get('fecha_ingreso')
+                    if raw_date:
+                        try:
+                            fecha_ing = pd.to_datetime(raw_date).date()
+                        except:
+                            pass
+
+                    # 4. Verificar si ya existe para actualizar o crear
+                    equipo_existente = Equipo.objects.filter(serie__iexact=data['serie']).first()
+                    
+                    # Determinar qué fecha actualizar según el estado
+                    fecha_update = {}
+                    if estado == 'BAJA':
+                        fecha_update['fecha_baja'] = fecha_ing
+                    else:
+                        fecha_update['fecha_ingreso'] = fecha_ing
+
+                    if equipo_existente:
+                        # Actualizar solo campos específicos solicitados
+                        equipo_existente.estado = estado
+                        equipo_existente.usuario_asignado = persona
+                        if 'fecha_ingreso' in fecha_update:
+                            equipo_existente.fecha_ingreso = fecha_update['fecha_ingreso']
+                        if 'fecha_baja' in fecha_update:
+                            equipo_existente.fecha_baja = fecha_update['fecha_baja']
+                        
+                        equipo_existente.nombre_equipo = data['nombre_equipo'].upper()
+                        equipo_existente.marca = data.get('marca', '').upper() if data.get('marca') else equipo_existente.marca
+                        equipo_existente.modelo = data.get('modelo', '').upper() if data.get('modelo') else equipo_existente.modelo
+                        
+                        equipo_existente.save()
+                        created_count += 1
+                    else:
+                        # 5. Crear el registro si no existe
+                        Equipo.objects.create(
+                            creado_por=request.user,
+                            nombre_equipo=data['nombre_equipo'].upper(),
+                            serie=data['serie'].upper(),
+                            marca=data.get('marca', '').upper() if data.get('marca') else None,
+                            modelo=data.get('modelo', '').upper() if data.get('modelo') else None,
+                            activo_fijo=data.get('activo_fijo') if data.get('activo_fijo') and '---' not in str(data.get('activo_fijo')) else None,
+                            estado=estado,
+                            usuario_asignado=persona,
+                            fecha_ingreso=fecha_update.get('fecha_ingreso'),
+                            fecha_baja=fecha_update.get('fecha_baja'),
+                            subcategoria=None 
+                        )
+                        created_count += 1
+
+                except Exception as e:
+                    errors.append(f"Fila {index + 2}: {str(e)}")
+
+            return Response({
+                "message": f"Proceso finalizado. {created_count} registros creados.",
+                "errors": errors
+            })
+
+        except Exception as e:
+            return Response({"error": f"Error crítico al procesar archivo: {str(e)}"}, status=500)
 
 # --- VISTA PARA REGISTRO DE USUARIOS ---
 @api_view(['POST'])
