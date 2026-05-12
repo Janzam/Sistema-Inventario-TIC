@@ -1,6 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Bell, Search, Package, ChevronDown, User, Lock, LogOut, X, Camera, Upload, Eye, EyeOff } from 'lucide-react';
 import { useStock } from '../context/StockContext';
+
+const Modal = ({ title, onClose, onSave, children }) => (
+  <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 italic">
+    <div className="bg-[#1e1e2d] border border-gray-800 w-full max-w-md rounded-[2rem] p-8 animate-in zoom-in duration-300 relative">
+      <button onClick={onClose} className="absolute top-6 right-6 text-gray-500 hover:text-white"><X size={20} /></button>
+      <h2 className="text-xl font-black text-white uppercase mb-6 tracking-tighter">{title}</h2>
+      {children}
+      <div className="mt-6 flex gap-3">
+        <button onClick={onClose} className="flex-1 bg-gray-800 text-gray-400 font-bold py-3 rounded-xl uppercase text-[10px]">Cancelar</button>
+        <button onClick={onSave} className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl uppercase text-[10px]">Guardar</button>
+      </div>
+    </div>
+  </div>
+);
 
 const Header = ({ equipos = [], onSearch, user, onLogout, onUpdateUser }) => {
   const { stockLimit } = useStock();
@@ -31,15 +45,17 @@ const Header = ({ equipos = [], onSearch, user, onLogout, onUpdateUser }) => {
 
   const fileInputRef = useRef(null);
   const prevStockRef = useRef([]);
-  const disponiblesList = equipos.filter(e => e.estado === 'DISPONIBLE');
-  const conteo = disponiblesList.reduce((acc, eq) => {
-    acc[eq.nombre_equipo] = (acc[eq.nombre_equipo] || 0) + 1;
-    return acc;
-  }, {});
+  const bajoStock = useMemo(() => {
+    const disponiblesList = equipos.filter(e => e.estado === 'DISPONIBLE');
+    const conteo = disponiblesList.reduce((acc, eq) => {
+      acc[eq.nombre_equipo] = (acc[eq.nombre_equipo] || 0) + 1;
+      return acc;
+    }, {});
 
-  const bajoStock = Object.keys(conteo)
-    .map(nombre => ({ name: nombre, count: conteo[nombre] }))
-    .filter(item => item.count < stockLimit);
+    return Object.keys(conteo)
+      .map(nombre => ({ name: nombre, count: conteo[nombre] }))
+      .filter(item => item.count < stockLimit);
+  }, [equipos, stockLimit]);
 
   useEffect(() => {
     prevStockRef.current = bajoStock;
@@ -60,20 +76,6 @@ const Header = ({ equipos = [], onSearch, user, onLogout, onUpdateUser }) => {
     onUpdateUser(editData);
     setShowEditModal(false);
   };
-
-  const Modal = ({ title, onClose, onSave, children }) => (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 italic">
-      <div className="bg-[#1e1e2d] border border-gray-800 w-full max-w-md rounded-[2rem] p-8 animate-in zoom-in duration-300 relative">
-        <button onClick={onClose} className="absolute top-6 right-6 text-gray-500 hover:text-white"><X size={20} /></button>
-        <h2 className="text-xl font-black text-white uppercase mb-6 tracking-tighter">{title}</h2>
-        {children}
-        <div className="mt-6 flex gap-3">
-          <button onClick={onClose} className="flex-1 bg-gray-800 text-gray-400 font-bold py-3 rounded-xl uppercase text-[10px]">Cancelar</button>
-          <button onClick={onSave} className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl uppercase text-[10px]">Guardar</button>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <header className="bg-[#151521] border-b border-gray-800 p-4 flex justify-between items-center sticky top-0 z-50 italic">

@@ -60,7 +60,7 @@ class EquipoSerializer(serializers.ModelSerializer):
             'id', 'creado_por', 'subcategoria', 'subcategoria_detalle',
             'nombre_equipo', 'serie', 'marca', 'modelo', 'activo_fijo',
             'estado', 'usuario_asignado', 'usuario_asignado_detalle', 
-            'departamento', 'novedad', 'fecha_ingreso', 'fecha_baja', 'ultima_actualizacion'
+            'departamento', 'novedad', 'fecha_ingreso', 'fecha_asignacion', 'fecha_baja', 'ultima_actualizacion'
         ]
 
     def validate_serie(self, value):

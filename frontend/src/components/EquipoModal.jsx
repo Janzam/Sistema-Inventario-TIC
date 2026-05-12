@@ -15,6 +15,7 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
     usuario_asignado: '', 
     departamento: '',
     fecha_ingreso: new Date().toISOString().split('T')[0],
+    fecha_asignacion: '',
     fecha_baja: '', 
     estado: 'DISPONIBLE', 
     novedad: 'Ingreso inicial al sistema',
@@ -68,8 +69,10 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
   useEffect(() => {
     if (equipoInicial) {
       setFormData({
+        ...initialState,
         ...equipoInicial,
         fecha_ingreso: equipoInicial.fecha_ingreso || initialState.fecha_ingreso,
+        fecha_asignacion: equipoInicial.fecha_asignacion || (equipoInicial.estado === 'ASIGNADO' ? new Date().toISOString().split('T')[0] : ''),
         fecha_baja: equipoInicial.fecha_baja || '',
         subcategoria: equipoInicial.subcategoria || ''
       });
@@ -107,14 +110,15 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
       subcategoria: formData.subcategoria || null,
       marca: formData.marca?.toUpperCase().trim() || null,
       modelo: formData.modelo?.toUpperCase().trim() || null,
-      usuario_asignado: formData.usuario_asignado?.toUpperCase().trim() || null,
+      usuario_asignado: formData.usuario_asignado || null,
       departamento: formData.departamento?.toUpperCase().trim() || null,
+      fecha_asignacion: formData.fecha_asignacion || null,
       fecha_baja: formData.fecha_baja || null, 
       novedad: formData.novedad?.toUpperCase().trim() || 'SIN NOVEDAD'
     };
 
     try {
-      if (equipoInicial) {
+      if (equipoInicial?.id) {
         await api.put(`equipos/${equipoInicial.id}/`, dataToSend);
         showToast("Equipo actualizado correctamente", "success");
         onRefresh();
@@ -125,10 +129,6 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
         onRefresh();
         // No cerramos el modal, solo limpiamos para seguir ingresando
         setFormData(initialState);
-        // Si queremos mantener la categoría y subcategoría para agilizar:
-        if (dataToSend.subcategoria) {
-            setFormData(prev => ({...prev, subcategoria: dataToSend.subcategoria}));
-        }
       }
     } catch (error) {
       const data = error.response?.data;
@@ -147,9 +147,9 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
         <div className="flex justify-between items-center p-8 border-b border-gray-800/50">
           <div className="flex items-center gap-3">
              <div className="p-2 bg-indigo-600 rounded-xl"><Layers size={20}/></div>
-             <h3 className="text-2xl font-black text-white uppercase italic">
-               {equipoInicial ? 'Editar Registro' : 'Nuevo Ingreso'}
-             </h3>
+              <h3 className="text-2xl font-black text-white uppercase italic">
+                {equipoInicial?.id ? 'Editar Registro' : 'Nuevo Ingreso'}
+              </h3>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={24} /></button>
         </div>
@@ -244,7 +244,8 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
                     setFormData({
                       ...formData, 
                       estado: val,
-                      ...(val === 'BAJA' && !formData.fecha_baja ? { fecha_baja: new Date().toISOString().split('T')[0] } : {})
+                      ...(val === 'BAJA' && !formData.fecha_baja ? { fecha_baja: new Date().toISOString().split('T')[0] } : {}),
+                      ...(val === 'ASIGNADO' && !formData.fecha_asignacion ? { fecha_asignacion: new Date().toISOString().split('T')[0] } : {})
                     });
                   }}
                 >
@@ -257,16 +258,7 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-white/[0.02] rounded-[2rem] border border-white/5">
-               <div className="col-span-full">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Fechas y Control</p>
-               </div>
-               <div className="space-y-1">
-                  <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Fecha Ingreso (Inst.)</label>
-                  <input type="date" className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white"
-                    value={formData.fecha_ingreso || ''} onChange={(e) => setFormData({...formData, fecha_ingreso: e.target.value})} />
-               </div>
-            </div>
+
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-indigo-500/5 rounded-[2rem] border border-indigo-500/10">
              <div className="col-span-full">
@@ -285,7 +277,7 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
                   ))}
                 </select>
              </div>
-             <div className="space-y-1">
+              <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Departamento</label>
                 <input className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white"
                   placeholder="Ej: Sistemas, Contabilidad..."
@@ -316,7 +308,7 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
             <div className="flex gap-4">
               <button type="button" onClick={onClose} className="flex-1 bg-gray-800 text-gray-400 font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-gray-700">Cancelar</button>
               <button type="submit" className="flex-[2] bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 shadow-xl text-[10px] uppercase tracking-widest transition-all">
-                <Save size={18} className="inline mr-2" /> {equipoInicial ? 'Guardar Cambios' : 'Registrar Equipo'}
+                <Save size={18} className="inline mr-2" /> {equipoInicial?.id ? 'Guardar Cambios' : 'Registrar Equipo'}
               </button>
             </div>
           </div>

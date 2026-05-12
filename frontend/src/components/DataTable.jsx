@@ -247,7 +247,11 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
               <Upload size={16} /> IMPORTAR EXCEL
               <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImport} />
             </label>
-            <button onClick={() => { setSelectedEquipo(null); setIsModalOpen(true); }} 
+            <button onClick={() => { 
+              const defaultEq = currentView === 'asignaciones' ? { estado: 'ASIGNADO' } : null;
+              setSelectedEquipo(defaultEq); 
+              setIsModalOpen(true); 
+            }} 
               className="bg-indigo-600 px-5 py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 shadow-lg transition-all">
               <Plus size={16} /> NUEVO EQUIPO
             </button>
@@ -262,6 +266,8 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
               <th className="px-6 py-5 text-center w-12">N°</th>
               <th className="px-6 py-5">Equipo / Serie</th>
               <th className="px-6 py-5">FECHA INGRESO</th>
+              {(currentView === 'asignaciones' || currentView === 'global') && <th className="px-6 py-5">FECHA ASIGNACIÓN</th>}
+              {currentView === 'bajas' && <th className="px-6 py-5">FECHA BAJA</th>}
               <th className="px-6 py-5">Estado Actual</th>
               <th className="px-6 py-5">Responsable</th>
               {user?.rol !== 'VIEWER' && <th className="px-6 py-5 text-center">Acciones Rápidas</th>}
@@ -293,6 +299,22 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
                     {formatDate(item.fecha_ingreso)}
                   </div>
                 </td>
+                {(currentView === 'asignaciones' || currentView === 'global') && (
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-sky-400">
+                      <Calendar size={12} className="text-sky-500/50" />
+                      {formatDate(item.fecha_asignacion)}
+                    </div>
+                  </td>
+                )}
+                {currentView === 'bajas' && (
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-red-400">
+                      <Calendar size={12} className="text-red-500/50" />
+                      {formatDate(item.fecha_baja)}
+                    </div>
+                  </td>
+                )}
                 <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-[9px] font-black tracking-tighter ${
                       item.estado === 'DISPONIBLE' ? 'bg-emerald-500/10 text-emerald-500' :

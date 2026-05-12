@@ -56,6 +56,7 @@ class Equipo(models.Model):
     
     novedad = models.TextField(blank=True, null=True)
     fecha_ingreso = models.DateField(null=True, blank=True)
+    fecha_asignacion = models.DateField(null=True, blank=True)
     fecha_baja = models.DateField(null=True, blank=True)
     ultima_actualizacion = models.DateTimeField(auto_now=True)
 

@@ -252,12 +252,15 @@ class EquipoViewSet(viewsets.ModelViewSet):
                 'usuario_asignado__nombre': 'RESPONSABLE / USUARIO',
                 'departamento': 'DEPARTAMENTO',
                 'fecha_ingreso': 'FECHA INGRESO (INST.)',
-                'fecha_baja': 'FECHA DE BAJA',
             }
 
-            if estado == 'BAJA':
+            if estado == 'ASIGNADO' or estado == 'ALL' or not estado:
+                column_mapping['fecha_asignacion'] = 'FECHA DE ASIGNACIÓN'
+
+            if estado == 'BAJA' or estado == 'ALL' or not estado:
                 column_mapping['fecha_baja'] = 'FECHA DE BAJA'
-                column_mapping['novedad'] = 'OBSERVACIONES / NOVEDAD DE BAJA'
+                if estado == 'BAJA':
+                    column_mapping['novedad'] = 'OBSERVACIONES / NOVEDAD DE BAJA'
 
             data = list(queryset.values(*column_mapping.keys()))
 
