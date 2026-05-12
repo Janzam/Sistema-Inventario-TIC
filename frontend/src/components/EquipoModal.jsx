@@ -266,14 +266,6 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
                   <input type="date" className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white"
                     value={formData.fecha_ingreso || ''} onChange={(e) => setFormData({...formData, fecha_ingreso: e.target.value})} />
                </div>
-               {equipoInicial && (
-                 <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Fecha Registro (Sistema)</label>
-                    <div className="w-full bg-[#151521]/50 border border-gray-800 rounded-2xl px-5 py-3 text-gray-500 font-mono text-[11px]">
-                      {new Date(equipoInicial.fecha_registro).toLocaleString()}
-                    </div>
-                 </div>
-               )}
             </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-indigo-500/5 rounded-[2rem] border border-indigo-500/10">

@@ -45,7 +45,7 @@ class PersonaSerializer(serializers.ModelSerializer):
             qs = qs.exclude(pk=instance.pk)
             
         if qs.exists():
-            raise serializers.ValidationError("Error: Ya existe una persona registrada con este número de identificación.")
+            raise serializers.ValidationError("Error: Esta identificación ya está registrada para otra persona.")
             
         return identificacion
 
@@ -72,7 +72,7 @@ class EquipoSerializer(serializers.ModelSerializer):
             qs = qs.exclude(pk=instance.pk)
             
         if qs.exists():
-            raise serializers.ValidationError("Error: Esta Serie ya pertenece a otro equipo registrado.")
+            raise serializers.ValidationError("Error: Esta serie ya pertenece a otro equipo registrado.")
             
         return serie_nueva
 
@@ -90,6 +90,6 @@ class EquipoSerializer(serializers.ModelSerializer):
             qs = qs.exclude(pk=instance.pk)
             
         if qs.exists():
-            raise serializers.ValidationError("Error: Este Código de Activo Fijo ya pertenece a otro equipo.")
+            raise serializers.ValidationError("Error: Este código de activo fijo ya pertenece a otro equipo.")
             
         return af_nuevo

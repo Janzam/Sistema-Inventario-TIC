@@ -66,13 +66,13 @@ const SecurityModule = () => {
   };
 
   const deletePersona = async (id) => {
-    if (!window.confirm("¿Estás seguro de eliminar a esta persona?")) return;
+    if (!window.confirm("¿Estás seguro de que deseas eliminar a esta persona del sistema?")) return;
     try {
       await api.delete(`personas/${id}/`);
-      showToast("Persona eliminada", "info");
+      showToast("Persona eliminada del registro", "info");
       fetchPersonas();
     } catch (err) {
-      showToast("No se pudo eliminar la persona.", "error");
+      showToast("Error: No se pudo eliminar a esta persona.", "error");
     }
   };
 

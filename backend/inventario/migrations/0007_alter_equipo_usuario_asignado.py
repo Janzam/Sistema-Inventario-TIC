@@ -3,6 +3,30 @@
 import django.db.models.deletion
 from django.db import migrations, models
 
+def migrate_names_to_personas(apps, schema_editor):
+    Equipo = apps.get_model('inventario', 'Equipo')
+    Persona = apps.get_model('inventario', 'Persona')
+    
+    for equipo in Equipo.objects.all():
+        # En el paso anterior renombramos el campo a usuario_asignado_char
+        name_str = getattr(equipo, 'usuario_asignado_char', None)
+        if name_str:
+            clean_name = name_str.strip().upper()
+            if not clean_name:
+                continue
+                
+            # Intentar encontrar una persona existente o crear una temporal
+            persona = Persona.objects.filter(nombre__iexact=clean_name).first()
+            if not persona:
+                # Generar una identificación temporal (máx 20 caracteres)
+                temp_id = f"T{equipo.id}_{clean_name[:15]}"[:20]
+                persona = Persona.objects.create(
+                    nombre=clean_name,
+                    identificacion=temp_id
+                )
+            
+            equipo.usuario_asignado = persona
+            equipo.save()
 
 class Migration(migrations.Migration):
 
@@ -11,9 +35,29 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
+        # 1. Renombrar el campo actual para no perder los datos (nombres como "Luis Vera")
+        migrations.RenameField(
+            model_name='equipo',
+            old_name='usuario_asignado',
+            new_name='usuario_asignado_char',
+        ),
+        # 2. Añadir el nuevo campo ForeignKey
+        migrations.AddField(
             model_name='equipo',
             name='usuario_asignado',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='equipos_asignados', to='inventario.persona'),
+            field=models.ForeignKey(
+                blank=True, 
+                null=True, 
+                on_delete=django.db.models.deletion.SET_NULL, 
+                related_name='equipos_asignados', 
+                to='inventario.persona'
+            ),
+        ),
+        # 3. Ejecutar script de migración de datos
+        migrations.RunPython(migrate_names_to_personas),
+        # 4. Eliminar el campo temporal de texto
+        migrations.RemoveField(
+            model_name='equipo',
+            name='usuario_asignado_char',
         ),
     ]
