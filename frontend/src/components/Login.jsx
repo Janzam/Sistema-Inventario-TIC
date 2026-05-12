@@ -4,7 +4,7 @@ import api from '../api';
 
 const Login = ({ onLoginSuccess }) => {
   const [isRegister, setIsRegister] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '', name: '' });
+  const [formData, setFormData] = useState({ identifier: '', password: '', name: '' });
   const [loading, setLoading] = useState(false);
 
   const handleTraditionalAction = async (e) => {
@@ -16,13 +16,13 @@ const Login = ({ onLoginSuccess }) => {
       
       const payload = isRegister 
         ? { 
-            username: formData.email, 
-            email: formData.email, 
+            username: formData.identifier, 
+            email: formData.identifier, 
             password: formData.password, 
             first_name: formData.name 
           }
         : { 
-            username: formData.email, 
+            username: formData.identifier, 
             password: formData.password 
           };
 
@@ -30,13 +30,13 @@ const Login = ({ onLoginSuccess }) => {
 
       if (res.data && res.data.token) {
         onLoginSuccess({
-          user: res.data.user || { name: formData.name || formData.email, email: formData.email },
+          user: res.data.user || { name: formData.name || formData.identifier, email: formData.identifier },
           token: res.data.token
         });
       }
     } catch (error) {
       console.error("Error en autenticación:", error);
-      const errorMsg = error.response?.data?.error || "Credenciales incorrectas o error de servidor";
+      const errorMsg = error.response?.data?.non_field_errors?.[0] || error.response?.data?.error || "Credenciales incorrectas o cuenta no activa";
       alert(errorMsg);
     } finally {
       setLoading(false);
@@ -89,12 +89,12 @@ const Login = ({ onLoginSuccess }) => {
           <div className="relative">
             <Mail className="absolute left-3 top-3 text-gray-500" size={18} />
             <input 
-              type="email" 
-              placeholder="CORREO INSTITUCIONAL" 
+              type="text" 
+              placeholder="USUARIO O CORREO" 
               required 
               className="w-full bg-[#151521] border border-gray-800 rounded-xl py-3 pl-10 text-sm text-white focus:border-indigo-500 outline-none font-bold"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})} 
+              value={formData.identifier}
+              onChange={(e) => setFormData({...formData, identifier: e.target.value})} 
             />
           </div>
 

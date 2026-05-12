@@ -5,12 +5,12 @@ def create_default_admin(apps, schema_editor):
     User = apps.get_model('auth', 'User')
     Persona = apps.get_model('inventario', 'Persona')
     
-    # Solo crear si no hay ningún usuario
-    if not User.objects.exists():
+    # Crear si no existe el usuario específico
+    if not User.objects.filter(username='admin_tic').exists():
         user = User.objects.create_superuser(
             username='admin_tic',
             email='admin@inventario.com',
-            password='admin_password_2026',
+            password='admin2026@',
             first_name='ADMINISTRADOR MAESTRO'
         )
         
