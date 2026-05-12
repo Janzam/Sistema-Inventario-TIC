@@ -115,6 +115,13 @@ class Persona(models.Model):
         related_name='persona'
     )
 
+    ROLES = [
+        ('ADMIN', 'Administrador'),
+        ('TECNICO', 'Técnico'),
+        ('VIEWER', 'Visualizador'),
+    ]
+    rol = models.CharField(max_length=10, choices=ROLES, default='VIEWER')
+
     fecha_registro = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

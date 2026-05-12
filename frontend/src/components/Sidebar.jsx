@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../api';
 
-const Sidebar = ({ setView, currentView, equiposReales = [], onSelectCategory }) => {
+const Sidebar = ({ setView, currentView, equiposReales = [], onSelectCategory, user }) => {
   const { stockLimit, setStockLimit } = useStock();
   const [categories, setCategories] = useState([]);
   const [showCatReports, setShowCatReports] = useState(false);
@@ -86,23 +86,27 @@ const Sidebar = ({ setView, currentView, equiposReales = [], onSelectCategory })
           <LayoutDashboard size={20}/> DASHBOARD
         </button>
 
-        <button 
-          onClick={() => setView('security')} 
-          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
-            currentView === 'security' ? 'bg-indigo-600 text-white shadow-xl border-l-4 border-white/30' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
-          }`}
-        >
-          <Shield size={20}/> SEGURIDAD Y ACCESOS
-        </button>
+        {user?.rol === 'ADMIN' && (
+          <button 
+            onClick={() => setView('security')} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
+              currentView === 'security' ? 'bg-indigo-600 text-white shadow-xl border-l-4 border-white/30' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
+            }`}
+          >
+            <Shield size={20}/> SEGURIDAD Y ACCESOS
+          </button>
+        )}
 
-        <button 
-          onClick={() => setView('category_config')} 
-          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
-            currentView === 'category_config' ? 'bg-indigo-600 text-white shadow-xl border-l-4 border-white/30' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
-          }`}
-        >
-          <Settings2 size={20}/> CONFIG. CATEGORÍAS
-        </button>
+        {user?.rol === 'ADMIN' && (
+          <button 
+            onClick={() => setView('category_config')} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
+              currentView === 'category_config' ? 'bg-indigo-600 text-white shadow-xl border-l-4 border-white/30' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
+            }`}
+          >
+            <Settings2 size={20}/> CONFIG. CATEGORÍAS
+          </button>
+        )}
 
         <div className="pt-8 pb-3 px-6 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
            Explorar por Categoría
@@ -120,50 +124,45 @@ const Sidebar = ({ setView, currentView, equiposReales = [], onSelectCategory })
           ))}
         </div>
 
-        <button 
-          onClick={() => setView('bajas')} 
-          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
-            currentView === 'bajas' ? 'bg-red-600 text-white shadow-xl' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
-          }`}
-        >
-          <Trash2 size={20}/> EQUIPOS DE BAJA
-        </button>
+        {(user?.rol === 'ADMIN' || user?.rol === 'TECNICO') && (
+          <>
+            <button 
+              onClick={() => setView('bajas')} 
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
+                currentView === 'bajas' ? 'bg-red-600 text-white shadow-xl' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
+              }`}
+            >
+              <Trash2 size={20}/> EQUIPOS DE BAJA
+            </button>
 
-        <button 
-          onClick={() => setView('asignaciones')} 
-          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
-            currentView === 'asignaciones' ? 'bg-sky-600 text-white shadow-xl' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
-          }`}
-        >
-          <UserCheck size={20}/> EQUIPOS ASIGNADOS
-        </button>
+            <button 
+              onClick={() => setView('asignaciones')} 
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
+                currentView === 'asignaciones' ? 'bg-sky-600 text-white shadow-xl' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
+              }`}
+            >
+              <UserCheck size={20}/> EQUIPOS ASIGNADOS
+            </button>
 
-        <button 
-          onClick={() => setView('reparacion')} 
-          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
-            currentView === 'reparacion' ? 'bg-amber-600 text-white shadow-xl' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
-          }`}
-        >
-          <Wrench size={20}/> MANTENIMIENTO
-        </button>
+            <button 
+              onClick={() => setView('reparacion')} 
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
+                currentView === 'reparacion' ? 'bg-amber-600 text-white shadow-xl' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
+              }`}
+            >
+              <Wrench size={20}/> MANTENIMIENTO
+            </button>
 
-        <button 
-          onClick={() => setView('disponibles')} 
-          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
-            currentView === 'disponibles' ? 'bg-emerald-600 text-white shadow-xl' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
-          }`}
-        >
-          <Box size={20}/> EQUIPOS DISPONIBLES
-        </button>
-
-        <button 
-          onClick={() => setView('security')} 
-          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
-            currentView === 'security' ? 'bg-indigo-600 text-white shadow-xl border-l-4 border-white/30' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
-          }`}
-        >
-          <Shield size={20}/> SEGURIDAD Y ACCESOS
-        </button>
+            <button 
+              onClick={() => setView('disponibles')} 
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black transition-all ${
+                currentView === 'disponibles' ? 'bg-emerald-600 text-white shadow-xl' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'
+              }`}
+            >
+              <Box size={20}/> EQUIPOS DISPONIBLES
+            </button>
+          </>
+        )}
 
         <div className="pt-6 pb-2 px-5 text-[10px] font-black text-gray-600 uppercase tracking-widest">
            Reportes de Inventario

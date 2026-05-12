@@ -63,7 +63,7 @@ const BajaModal = ({ equipo, onConfirm, onCancel }) => {
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden, isManualModalOpen, setIsManualModalOpen, preselectedCategory, onRefresh }) => { 
+const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden, isManualModalOpen, setIsManualModalOpen, preselectedCategory, onRefresh, user }) => { 
   const [data, setData] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEquipo, setSelectedEquipo] = useState(null);
@@ -241,16 +241,18 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
           <div className="h-1 w-20 bg-indigo-600 rounded-full mt-1"></div>
         </div>
         
-        <div className="flex gap-3">
-          <label className="bg-emerald-600 px-5 py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-700 shadow-lg transition-all cursor-pointer">
-            <Upload size={16} /> IMPORTAR EXCEL
-            <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImport} />
-          </label>
-          <button onClick={() => { setSelectedEquipo(null); setIsModalOpen(true); }} 
-            className="bg-indigo-600 px-5 py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 shadow-lg transition-all">
-            <Plus size={16} /> NUEVO EQUIPO
-          </button>
-        </div>
+        {user?.rol !== 'VIEWER' && (
+          <div className="flex gap-3">
+            <label className="bg-emerald-600 px-5 py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-700 shadow-lg transition-all cursor-pointer">
+              <Upload size={16} /> IMPORTAR EXCEL
+              <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImport} />
+            </label>
+            <button onClick={() => { setSelectedEquipo(null); setIsModalOpen(true); }} 
+              className="bg-indigo-600 px-5 py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 shadow-lg transition-all">
+              <Plus size={16} /> NUEVO EQUIPO
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-[#1e1e2d] rounded-[2rem] border border-gray-800 overflow-hidden shadow-2xl">
@@ -262,7 +264,7 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
               <th className="px-6 py-5">FECHA INGRESO</th>
               <th className="px-6 py-5">Estado Actual</th>
               <th className="px-6 py-5">Responsable</th>
-              <th className="px-6 py-5 text-center">Acciones Rápidas</th>
+              {user?.rol !== 'VIEWER' && <th className="px-6 py-5 text-center">Acciones Rápidas</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800/50">
@@ -304,14 +306,16 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
                 <td className="px-6 py-4 text-[10px] font-bold uppercase text-gray-300">
                   {item.estado === 'DISPONIBLE' ? 'BODEGA CENTRAL' : (item.usuario_asignado_detalle?.nombre || 'NO ASIGNADO')}
                 </td>
-                <td className="px-6 py-4 flex justify-center gap-1">
-                    <button onClick={() => { setSelectedEquipo({...item, estado: 'ASIGNADO'}); setIsEditModalOpen(true); }} className="p-2 text-sky-400 hover:bg-sky-400/10 rounded-lg transition-all" title="Asignar Equipo (Completar Datos)"><UserCheck size={16}/></button>
-                    <button onClick={() => handleMove(item, 'DISPONIBLE')} className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all" title="Regresar a Bodega"><Box size={16}/></button>
-                    <button onClick={() => handleMove(item, 'REPARACION')} className="p-2 text-amber-400 hover:bg-amber-400/10 rounded-lg transition-all" title="Mantenimiento"><Wrench size={16}/></button>
-                    <button onClick={() => handleMove(item, 'BAJA')} className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-all" title="Dar de Baja (Retiro)"><Trash2 size={16}/></button>
-                    <div className="w-[1px] bg-gray-800 mx-1"></div>
-                    <button onClick={() => { setSelectedEquipo(item); setIsEditModalOpen(true); }} className="p-2 text-gray-400 hover:text-white transition-all" title="Editar Registro"><Edit size={16}/></button>
-                </td>
+                {user?.rol !== 'VIEWER' && (
+                  <td className="px-6 py-4 flex justify-center gap-1">
+                      <button onClick={() => { setSelectedEquipo({...item, estado: 'ASIGNADO'}); setIsEditModalOpen(true); }} className="p-2 text-sky-400 hover:bg-sky-400/10 rounded-lg transition-all" title="Asignar Equipo (Completar Datos)"><UserCheck size={16}/></button>
+                      <button onClick={() => handleMove(item, 'DISPONIBLE')} className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all" title="Regresar a Bodega"><Box size={16}/></button>
+                      <button onClick={() => handleMove(item, 'REPARACION')} className="p-2 text-amber-400 hover:bg-amber-400/10 rounded-lg transition-all" title="Mantenimiento"><Wrench size={16}/></button>
+                      <button onClick={() => handleMove(item, 'BAJA')} className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-all" title="Dar de Baja (Retiro)"><Trash2 size={16}/></button>
+                      <div className="w-[1px] bg-gray-800 mx-1"></div>
+                      <button onClick={() => { setSelectedEquipo(item); setIsEditModalOpen(true); }} className="p-2 text-gray-400 hover:text-white transition-all" title="Editar Registro"><Edit size={16}/></button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

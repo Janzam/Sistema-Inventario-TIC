@@ -11,8 +11,9 @@ const SecurityModule = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState(null);
-  const [formData, setFormData] = useState({ nombre: '', identificacion: '', email: '', telefono: '', direccion: '' });
-  const [userFormData, setUserFormData] = useState({ username: '', password: '' });
+  const [formData, setFormData] = useState({ nombre: '', identificacion: '', email: '', telefono: '', direccion: '', rol: 'VIEWER' });
+  const [userFormData, setUserFormData] = useState({ username: '', password: '', rol: 'VIEWER' });
+  const [pendingUsers, setPendingUsers] = useState([]);
 
   const fetchPersonas = async () => {
     setLoading(true);
@@ -26,8 +27,18 @@ const SecurityModule = () => {
     }
   };
 
+  const fetchPendingUsers = async () => {
+    try {
+      const res = await api.get('personas/pending_approval/');
+      setPendingUsers(res.data);
+    } catch (err) {
+      console.error("Error al cargar pendientes:", err);
+    }
+  };
+
   useEffect(() => {
     fetchPersonas();
+    fetchPendingUsers();
   }, []);
 
   const handlePersonaSubmit = async (e) => {
@@ -41,8 +52,7 @@ const SecurityModule = () => {
       } else {
         await api.post('personas/', formData);
         showToast("Persona registrada con éxito", "success");
-        // No cerramos el modal, solo limpiamos para seguir ingresando
-        setFormData({ nombre: '', identificacion: '', email: '', telefono: '', direccion: '' });
+        setFormData({ nombre: '', identificacion: '', email: '', telefono: '', direccion: '', rol: 'VIEWER' });
       }
       fetchPersonas();
       if (isEditing) resetForms();
@@ -77,9 +87,20 @@ const SecurityModule = () => {
   };
 
   const resetForms = () => {
-    setFormData({ nombre: '', identificacion: '', email: '', telefono: '', direccion: '' });
-    setUserFormData({ username: '', password: '' });
+    setFormData({ nombre: '', identificacion: '', email: '', telefono: '', direccion: '', rol: 'VIEWER' });
+    setUserFormData({ username: '', password: '', rol: 'VIEWER' });
     setSelectedPersona(null);
+  };
+
+  const approveUser = async (id, rol) => {
+    try {
+      await api.post(`personas/${id}/approve_user/`, { rol });
+      showToast("Usuario aprobado exitosamente", "success");
+      fetchPersonas();
+      fetchPendingUsers();
+    } catch (err) {
+      showToast("Error al aprobar usuario", "error");
+    }
   };
 
   const filtered = personas.filter(p => 
@@ -127,7 +148,7 @@ const SecurityModule = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-800/30 text-gray-500 text-[10px] uppercase font-black tracking-widest border-b border-gray-800">
-                  <th className="px-6 py-5">Persona</th>
+                  <th className="px-6 py-5">Persona / Rol</th>
                   <th className="px-6 py-5">Identificación</th>
                   <th className="px-6 py-5">Contacto</th>
                   <th className="px-6 py-5">Usuario Sistema</th>
@@ -143,7 +164,16 @@ const SecurityModule = () => {
                   <tr key={p.id} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-5">
                       <div className="font-black text-white uppercase italic text-xs">{p.nombre}</div>
-                      <div className="text-[9px] text-gray-500 font-bold uppercase mt-0.5">ID: {p.id}</div>
+                      <div className="flex gap-2 items-center mt-0.5">
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${
+                          p.rol === 'ADMIN' ? 'bg-indigo-500/20 text-indigo-400' : 
+                          p.rol === 'TECNICO' ? 'bg-amber-500/20 text-amber-400' : 
+                          'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {p.rol}
+                        </span>
+                        <span className="text-[9px] text-gray-500 font-bold uppercase">ID: {p.id}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-5 text-[11px] font-mono font-bold text-indigo-400">{p.identificacion}</td>
                     <td className="px-6 py-5 space-y-1">
@@ -203,18 +233,38 @@ const SecurityModule = () => {
           </div>
 
           <div className="bg-[#1e1e2d] border border-gray-800 p-6 rounded-[2rem] space-y-4">
-             <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-3">Resumen de Seguridad</h4>
-             <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                   <span className="text-[10px] font-bold text-gray-400">Sin Usuario</span>
-                   <span className="text-[10px] font-black text-amber-500">{personas.filter(p => !p.has_user).length}</span>
-                </div>
-                <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                   <div 
-                    className="h-full bg-amber-500" 
-                    style={{ width: `${(personas.filter(p => !p.has_user).length / (personas.length || 1)) * 100}%` }}
-                   ></div>
-                </div>
+             <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-3 flex justify-between items-center">
+               Solicitudes Pendientes
+               {pendingUsers.length > 0 && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
+             </h4>
+             <div className="space-y-4 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
+                {pendingUsers.length === 0 ? (
+                  <p className="text-[10px] text-gray-500 font-bold italic text-center py-4">No hay solicitudes pendientes</p>
+                ) : pendingUsers.map(p => (
+                  <div key={p.id} className="p-4 bg-[#151521] rounded-2xl border border-gray-800 space-y-3">
+                    <div>
+                      <div className="text-[11px] font-black text-white uppercase italic">{p.nombre}</div>
+                      <div className="text-[9px] text-gray-500 font-bold uppercase">{p.email}</div>
+                    </div>
+                    <div className="flex gap-2">
+                       <select 
+                        className="flex-1 bg-gray-800 border-none text-[9px] font-black text-white rounded-lg px-2 py-1 outline-none"
+                        onChange={(e) => p.selectedRol = e.target.value}
+                        defaultValue="VIEWER"
+                       >
+                          <option value="VIEWER">VISUALIZADOR</option>
+                          <option value="TECNICO">TÉCNICO</option>
+                          <option value="ADMIN">ADMIN</option>
+                       </select>
+                       <button 
+                        onClick={() => approveUser(p.id, p.selectedRol || 'VIEWER')}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 rounded-lg transition-all"
+                       >
+                        <Check size={14} />
+                       </button>
+                    </div>
+                  </div>
+                ))}
              </div>
           </div>
         </div>
@@ -256,6 +306,15 @@ const SecurityModule = () => {
                     value={formData.telefono} onChange={(e) => setFormData({...formData, telefono: e.target.value})} />
                 </div>
               </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Rol Asignado *</label>
+                <select className="w-full bg-[#151521] border border-gray-800 rounded-2xl px-5 py-3 text-white text-xs font-bold uppercase"
+                  value={formData.rol} onChange={(e) => setFormData({...formData, rol: e.target.value})}>
+                  <option value="VIEWER">Visualizador</option>
+                  <option value="TECNICO">Técnico</option>
+                  <option value="ADMIN">Administrador</option>
+                </select>
+              </div>
               <div className="flex flex-col gap-4 pt-4">
                 <div className="flex gap-4">
                   <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 bg-gray-800 text-gray-400 font-black py-4 rounded-2xl text-[10px] uppercase">Cancelar</button>
@@ -283,6 +342,15 @@ const SecurityModule = () => {
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Nombre de Usuario *</label>
                 <input required className="w-full bg-[#151521] border border-gray-800 rounded-2xl px-5 py-3 text-white"
                   value={userFormData.username} onChange={(e) => setUserFormData({...userFormData, username: e.target.value})} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Rol Inicial *</label>
+                <select className="w-full bg-[#151521] border border-gray-800 rounded-2xl px-5 py-3 text-white text-xs font-bold uppercase"
+                  value={userFormData.rol} onChange={(e) => setUserFormData({...userFormData, rol: e.target.value})}>
+                  <option value="VIEWER">Visualizador</option>
+                  <option value="TECNICO">Técnico</option>
+                  <option value="ADMIN">Administrador</option>
+                </select>
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Contraseña Temporal *</label>

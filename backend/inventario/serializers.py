@@ -30,7 +30,7 @@ class PersonaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Persona
-        fields = '__all__'
+        fields = ['id', 'nombre', 'identificacion', 'email', 'telefono', 'direccion', 'user', 'username', 'email_usuario', 'has_user', 'rol', 'fecha_registro']
 
     def get_has_user(self, obj):
         return obj.user is not None

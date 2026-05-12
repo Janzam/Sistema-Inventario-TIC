@@ -110,17 +110,18 @@ function App() {
     if (view === 'category_config') {
       return <CategoryManager />;
     }
-    return <DataTable currentView={view} onRefresh={fetchEquipos} searchTerm={searchTerm} />;
+    return <DataTable currentView={view} onRefresh={fetchEquipos} searchTerm={searchTerm} user={user} />;
   };
 
   return (
     <div className="flex bg-[#151521] min-h-screen font-sans text-gray-200 overflow-hidden italic">
       <Sidebar 
-  setView={setView} 
-  currentView={view} 
-  equiposReales={equipos} 
-  onSelectCategory={handleSelectCategory}
-/>
+        setView={setView} 
+        currentView={view} 
+        equiposReales={equipos} 
+        onSelectCategory={handleSelectCategory}
+        user={user}
+      />
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Header 
           equipos={equipos} 
@@ -142,6 +143,7 @@ function App() {
           setIsManualModalOpen={setIsModalOpen}
           preselectedCategory={preselectedCategory}
           onRefresh={fetchEquipos}
+          user={user}
         />
       </div>
     </div>

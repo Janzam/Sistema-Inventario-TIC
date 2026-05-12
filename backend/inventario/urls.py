@@ -11,7 +11,7 @@ router.register(r'personas', views.PersonaViewSet, basename='persona')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('token/', obtain_auth_token, name='api_token_auth'), 
+    path('token/', views.CustomObtainAuthToken.as_view(), name='api_token_auth'), 
     path('register/', views.register_user, name='register'),
     path('profile/', views.update_profile, name='update_profile'),
     path('change-password/', views.change_password, name='change_password'),

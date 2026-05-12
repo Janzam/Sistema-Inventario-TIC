@@ -15,6 +15,35 @@ from .serializers import (
     CategoriaSerializer, SubcategoriaSerializer, PersonaSerializer
 )
 
+from rest_framework.authtoken.views import ObtainAuthToken
+
+# --- VISTA PARA LOGIN PERSONALIZADA ---
+class CustomObtainAuthToken(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data,
+                                           context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+        
+        # Obtener rol de la persona vinculada
+        role = 'VIEWER'
+        persona_name = user.first_name
+        if hasattr(user, 'persona'):
+            role = user.persona.rol
+            persona_name = user.persona.nombre
+            
+        return Response({
+            'token': token.key,
+            'user': {
+                'id': user.pk,
+                'username': user.username,
+                'name': persona_name,
+                'email': user.email,
+                'rol': role
+            }
+        })
+
 # --- VISTA PARA PERSONAS ---
 class PersonaViewSet(viewsets.ModelViewSet):
     queryset = Persona.objects.all()
@@ -43,7 +72,11 @@ class PersonaViewSet(viewsets.ModelViewSet):
                 email=persona.email or '',
                 first_name=persona.nombre
             )
+            user.is_active = True # Creados por admin son activos de una vez
+            user.save()
+            
             persona.user = user
+            persona.rol = request.data.get('rol', 'VIEWER')
             persona.save()
             
             # Crear perfil
@@ -52,6 +85,31 @@ class PersonaViewSet(viewsets.ModelViewSet):
             return Response({"message": "Usuario creado y vinculado correctamente"}, status=201)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+    @action(detail=False, methods=['get'])
+    def pending_approval(self, request):
+        # Personas que tienen un usuario pero el usuario está is_active=False
+        pending = Persona.objects.filter(user__is_active=False)
+        serializer = self.get_serializer(pending, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def approve_user(self, request, pk=None):
+        persona = self.get_object()
+        if not persona.user:
+            return Response({"error": "Esta persona no tiene un usuario asociado"}, status=400)
+        
+        rol = request.data.get('rol')
+        if rol not in ['ADMIN', 'TECNICO', 'VIEWER']:
+            return Response({"error": "Rol inválido"}, status=400)
+            
+        persona.rol = rol
+        persona.save()
+        
+        persona.user.is_active = True
+        persona.user.save()
+        
+        return Response({"message": f"Usuario {persona.user.username} aprobado como {rol}"})
 
 # --- VISTA PARA CATEGORÍAS ---
 class CategoriaViewSet(viewsets.ModelViewSet):
@@ -105,7 +163,20 @@ class EquipoViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        queryset = Equipo.objects.filter(creado_por=self.request.user)
+        user = self.request.user
+        role = getattr(getattr(user, 'persona', None), 'rol', 'VIEWER')
+        
+        if role in ['ADMIN', 'TECNICO']:
+            queryset = Equipo.objects.all()
+        else:
+            # Los visualizadores solo ven equipos asignados a ellos
+            # Buscamos la Persona vinculada al usuario
+            persona = getattr(user, 'persona', None)
+            if persona:
+                queryset = Equipo.objects.filter(usuario_asignado=persona)
+            else:
+                queryset = Equipo.objects.none()
+
         subcat_id = self.request.query_params.get('subcategoria')
         cat_id = self.request.query_params.get('categoria')
         
@@ -477,13 +548,25 @@ def register_user(request):
             password=password,
             first_name=first_name
         )
+        # Los nuevos registros están DESACTIVADOS por defecto hasta que el Admin apruebe
+        user.is_active = False
+        user.save()
+
+        # Crear la Persona asociada con rol VIEWER por defecto
+        # Usamos el email como identificación si no viene, o el username
+        Persona.objects.create(
+            user=user,
+            nombre=first_name or username,
+            identificacion=username[:20],
+            email=email,
+            rol='VIEWER'
+        )
+
         # Crear perfil automáticamente
         Profile.objects.get_or_create(user=user)
         
-        token, _ = Token.objects.get_or_create(user=user)
         return Response({
-            "token": token.key,
-            "user": {"username": user.username, "name": user.first_name, "email": user.email}
+            "message": "Registro exitoso. Tu cuenta está pendiente de aprobación por un administrador."
         }, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
