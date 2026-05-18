@@ -26,7 +26,6 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
   const [categories, setCategories] = useState([]);
   const [selectedCatId, setSelectedCatId] = useState('');
   const [subcategories, setSubcategories] = useState([]);
-  const [personas, setPersonas] = useState([]);
   const [hasActivoFijo, setHasActivoFijo] = useState(true);
 
   useEffect(() => {
@@ -38,17 +37,8 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
         console.error("Error al cargar categorías", err);
       }
     };
-    const fetchPersonas = async () => {
-      try {
-        const res = await api.get('personas/');
-        setPersonas(res.data);
-      } catch (err) {
-        console.error("Error al cargar personas", err);
-      }
-    };
     if (isOpen) {
       fetchCats();
-      fetchPersonas();
     }
   }, [isOpen]);
 
@@ -266,16 +256,13 @@ const EquipoModal = ({ isOpen, onClose, onRefresh, equipoInicial, preselectedCat
              </div>
              <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Usuario / Responsable</label>
-                <select 
-                  className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white appearance-none focus:border-indigo-500/50 outline-none transition-all"
+                <input 
+                  type="text"
+                  className="w-full bg-[#151521] border border-gray-700 rounded-2xl px-5 py-3 text-white focus:border-indigo-500/50 outline-none transition-all"
+                  placeholder="Ej: LUIS VERA, JUAN PEREZ..."
                   value={formData.usuario_asignado || ''} 
                   onChange={(e) => setFormData({...formData, usuario_asignado: e.target.value})}
-                >
-                  <option value="">SIN ASIGNAR</option>
-                  {personas.map(p => (
-                    <option key={p.id} value={p.id}>{p.nombre}</option>
-                  ))}
-                </select>
+                />
              </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Departamento</label>

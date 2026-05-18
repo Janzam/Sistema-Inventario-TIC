@@ -52,7 +52,7 @@ class PersonaSerializer(serializers.ModelSerializer):
 class EquipoSerializer(serializers.ModelSerializer):
     creado_por = serializers.ReadOnlyField(source='creado_por.username')
     subcategoria_detalle = SubcategoriaSerializer(source='subcategoria', read_only=True)
-    usuario_asignado_detalle = PersonaSerializer(source='usuario_asignado', read_only=True)
+    usuario_asignado_detalle = serializers.SerializerMethodField()
     
     class Meta:
         model = Equipo
@@ -62,6 +62,11 @@ class EquipoSerializer(serializers.ModelSerializer):
             'estado', 'usuario_asignado', 'usuario_asignado_detalle', 
             'departamento', 'novedad', 'fecha_ingreso', 'fecha_asignacion', 'fecha_baja', 'ultima_actualizacion'
         ]
+
+    def get_usuario_asignado_detalle(self, obj):
+        if obj.usuario_asignado:
+            return {'nombre': obj.usuario_asignado}
+        return None
 
     def validate_serie(self, value):
         serie_nueva = value.upper().strip()

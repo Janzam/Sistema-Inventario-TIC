@@ -51,7 +51,7 @@ class Equipo(models.Model):
     activo_fijo = models.CharField(max_length=100, unique=True, null=True, blank=True)
     
     estado = models.CharField(max_length=20, choices=ESTADOS, default='NUEVO')
-    usuario_asignado = models.ForeignKey('Persona', on_delete=models.SET_NULL, null=True, blank=True, related_name='equipos_asignados')
+    usuario_asignado = models.CharField(max_length=150, blank=True, null=True)
     departamento = models.CharField(max_length=100, blank=True, null=True)
     
     novedad = models.TextField(blank=True, null=True)
@@ -78,6 +78,8 @@ class Equipo(models.Model):
             self.activo_fijo = self.activo_fijo.upper().strip()
             if self.activo_fijo == "SIN ACTIVO FIJO":
                 self.activo_fijo = None
+        if self.usuario_asignado:
+            self.usuario_asignado = self.usuario_asignado.upper().strip()
 
         user = self.usuario_asignado
         status = getattr(self, 'estado', 'NUEVO')

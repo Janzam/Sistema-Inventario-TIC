@@ -127,7 +127,7 @@ class CategoriaViewSet(viewsets.ModelViewSet):
         if role == 'VIEWER':
             persona = getattr(user, 'persona', None)
             if persona:
-                equipo_filter = Q(subcategorias__equipos__usuario_asignado=persona)
+                equipo_filter = Q(subcategorias__equipos__usuario_asignado__iexact=persona.nombre)
             else:
                 equipo_filter = Q(id__lt=0) # Forzar 0
         else:
@@ -185,7 +185,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
             # Buscamos la Persona vinculada al usuario
             persona = getattr(user, 'persona', None)
             if persona:
-                queryset = Equipo.objects.filter(usuario_asignado=persona)
+                queryset = Equipo.objects.filter(usuario_asignado__iexact=persona.nombre)
             else:
                 queryset = Equipo.objects.none()
 
@@ -227,7 +227,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
                 queryset = Equipo.objects.all()
             else:
                 persona = getattr(request.user, 'persona', None)
-                queryset = Equipo.objects.filter(usuario_asignado=persona) if persona else Equipo.objects.none()
+                queryset = Equipo.objects.filter(usuario_asignado__iexact=persona.nombre) if persona else Equipo.objects.none()
 
             estado = request.query_params.get('estado')
             cat_id = request.query_params.get('categoria')
@@ -249,7 +249,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
                 'modelo': 'MODELO',
                 'activo_fijo': 'ACTIVO FIJO ID',
                 'estado': 'ESTADO ACTUAL',
-                'usuario_asignado__nombre': 'RESPONSABLE / USUARIO',
+                'usuario_asignado': 'RESPONSABLE / USUARIO',
                 'departamento': 'DEPARTAMENTO',
                 'fecha_ingreso': 'FECHA INGRESO (INST.)',
             }
@@ -269,7 +269,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
                 for key, val in row.items():
                     if key == 'activo_fijo' and (val is None or str(val).strip() == ''):
                         row[key] = 'SIN ACTIVO FIJO'
-                    elif key == 'usuario_asignado__nombre' and (val is None or str(val).strip() == ''):
+                    elif key == 'usuario_asignado' and (val is None or str(val).strip() == ''):
                         row[key] = 'SIN RESPONSABLE'
                     elif val is None:
                         row[key] = ''
@@ -459,23 +459,15 @@ class EquipoViewSet(viewsets.ModelViewSet):
                     if not data.get('nombre_equipo') or not data.get('serie'):
                         continue
 
-                    # 1. Manejo de Persona (Usuario)
-                    persona = None
+                    # 1. Manejo de Usuario (como simple string)
+                    usuario_asignado = None
                     usuario_raw = data.get('usuario_raw')
                     if usuario_raw and usuario_raw.upper() not in ['BODEGA', 'SIN ASIGNAR', 'N/A', '----------']:
-                        nombre_persona = usuario_raw.upper()
-                        # Buscar por nombre exacto (case insensitive)
-                        persona = Persona.objects.filter(nombre__iexact=nombre_persona).first()
-                        if not persona:
-                            # Crear una persona temporal si no existe
-                            persona = Persona.objects.create(
-                                nombre=nombre_persona,
-                                identificacion=f'TEMP-{index}-{pd.Timestamp.now().strftime("%H%M%S")}'
-                            )
+                        usuario_asignado = usuario_raw.upper().strip()
 
                     # 2. Normalización de Estado
                     estado = 'DISPONIBLE'
-                    if persona:
+                    if usuario_asignado:
                         estado = 'ASIGNADO'
                     
                     estado_excel = str(data.get('estado_raw', '')).upper()
@@ -506,7 +498,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
                     if equipo_existente:
                         # Actualizar solo campos específicos solicitados
                         equipo_existente.estado = estado
-                        equipo_existente.usuario_asignado = persona
+                        equipo_existente.usuario_asignado = usuario_asignado
                         if 'fecha_ingreso' in fecha_update:
                             equipo_existente.fecha_ingreso = fecha_update['fecha_ingreso']
                         if 'fecha_baja' in fecha_update:
@@ -528,7 +520,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
                             modelo=data.get('modelo', '').upper() if data.get('modelo') else None,
                             activo_fijo=data.get('activo_fijo') if data.get('activo_fijo') and '---' not in str(data.get('activo_fijo')) else None,
                             estado=estado,
-                            usuario_asignado=persona,
+                            usuario_asignado=usuario_asignado,
                             fecha_ingreso=fecha_update.get('fecha_ingreso'),
                             fecha_baja=fecha_update.get('fecha_baja'),
                             subcategoria=None 
