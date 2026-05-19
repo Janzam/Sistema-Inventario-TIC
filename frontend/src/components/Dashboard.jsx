@@ -63,7 +63,7 @@ const Dashboard = ({ onSelectCategory, onAddToCategory, user }) => {
   );
 
   return (
-    <div className="p-8 space-y-10 bg-[#151521] min-h-screen text-white animate-in fade-in duration-700">
+    <div className="p-4 sm:p-8 space-y-10 bg-[#151521] min-h-screen text-white animate-in fade-in duration-700">
       <CategoryModal 
         isOpen={isCatModalOpen} 
         onClose={() => setIsCatModalOpen(false)} 
@@ -71,20 +71,20 @@ const Dashboard = ({ onSelectCategory, onAddToCategory, user }) => {
       />
       
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-600/20">
+            <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-600/20 shrink-0">
               <LayoutGrid size={28} className="text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-black tracking-tighter uppercase italic">Panel de Gestión TIC</h1>
-              <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mt-1">Explora el inventario por categorías especializadas</p>
+              <h1 className="text-2xl sm:text-4xl font-black tracking-tighter uppercase italic leading-tight">Panel de Gestión TIC</h1>
+              <p className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mt-1">Explora el inventario por categorías especializadas</p>
             </div>
           </div>
 
           {(user?.rol === 'ADMIN' || user?.rol === 'TECNICO') && (
-            <div className="flex gap-3">
-              <label className="flex items-center justify-center gap-3 bg-emerald-600/10 hover:bg-emerald-600/20 backdrop-blur-md border border-emerald-500/20 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:border-emerald-500/50 group cursor-pointer">
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+              <label className="flex items-center justify-center gap-3 bg-emerald-600/10 hover:bg-emerald-600/20 backdrop-blur-md border border-emerald-500/20 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:border-emerald-500/50 group cursor-pointer w-full sm:w-auto text-center">
                 <Upload size={18} className="text-emerald-500 group-hover:scale-110 transition-transform" />
                 Importar Inventario
                 <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImport} />
@@ -92,7 +92,7 @@ const Dashboard = ({ onSelectCategory, onAddToCategory, user }) => {
               {user?.rol === 'ADMIN' && (
                 <button 
                   onClick={() => setIsCatModalOpen(true)}
-                  className="flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:border-indigo-500/50 group"
+                  className="flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:border-indigo-500/50 group w-full sm:w-auto"
                 >
                   <FolderPlus size={18} className="text-indigo-500 group-hover:scale-110 transition-transform" />
                   Registrar Categoría

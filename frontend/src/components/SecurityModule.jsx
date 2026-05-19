@@ -110,21 +110,21 @@ const SecurityModule = () => {
   );
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in duration-700">
+    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-600/20">
+          <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-600/20 shrink-0">
             <Shield size={28} className="text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-black tracking-tighter uppercase italic text-white">Módulo de Seguridad</h1>
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tighter uppercase italic text-white leading-tight">Módulo de Seguridad</h1>
             <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mt-1">Gestión de Personal y Cuentas de Usuario</p>
           </div>
         </div>
 
         <button 
           onClick={() => { resetForms(); setIsModalOpen(true); }}
-          className="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-600/20"
+          className="flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-600/20 w-full md:w-auto"
         >
           <UserPlus size={18} /> Registrar Persona
         </button>

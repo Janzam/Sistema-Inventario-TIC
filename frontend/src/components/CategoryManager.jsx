@@ -117,14 +117,14 @@ const CategoryManager = () => {
   };
 
   return (
-    <div className="p-8 space-y-10 animate-in fade-in duration-700">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-8 space-y-10 animate-in fade-in duration-700">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-600/20">
+          <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-600/20 shrink-0">
             <Layers size={28} className="text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-black tracking-tighter uppercase italic">Configuración de Inventario</h1>
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tighter uppercase italic leading-tight">Configuración de Inventario</h1>
             <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mt-1">Gestiona la jerarquía de tus activos tecnológicos</p>
           </div>
         </div>
@@ -133,10 +133,10 @@ const CategoryManager = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* Tabla de Categorías */}
         <div className="bg-[#1e1e2d] rounded-[2.5rem] border border-gray-800/50 overflow-hidden shadow-2xl flex flex-col">
-          <div className="p-8 border-b border-gray-800/50 flex items-center justify-between bg-white/[0.02]">
+          <div className="p-4 sm:p-8 border-b border-gray-800/50 flex items-center justify-between bg-white/[0.02]">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-indigo-500/20 rounded-xl text-indigo-400"><Tag size={18}/></div>
-              <h3 className="text-xl font-black uppercase italic tracking-tighter">Categorías Principales</h3>
+              <h3 className="text-sm sm:text-xl font-black uppercase italic tracking-tighter">Categorías Principales</h3>
             </div>
             <button 
               onClick={() => { setSelectedCat(null); setCatForm({ nombre: '', color: '#6366f1' }); setIsCatModalOpen(true); }}
@@ -197,11 +197,11 @@ const CategoryManager = () => {
 
         {/* Tabla de Subcategorías */}
         <div className="bg-[#1e1e2d] rounded-[2.5rem] border border-gray-800/50 overflow-hidden shadow-2xl flex flex-col">
-          <div className="p-8 border-b border-gray-800/50 flex items-center justify-between bg-white/[0.02]">
+          <div className="p-4 sm:p-8 border-b border-gray-800/50 flex items-center justify-between bg-white/[0.02]">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-emerald-500/20 rounded-xl text-emerald-400"><FolderPlus size={18}/></div>
               <div>
-                <h3 className="text-xl font-black uppercase italic tracking-tighter">
+                <h3 className="text-sm sm:text-xl font-black uppercase italic tracking-tighter leading-tight">
                   {activeCategory ? `Subcategorías: ${activeCategory.nombre}` : 'Subcategorías Específicas'}
                 </h3>
                 {activeCategory && (

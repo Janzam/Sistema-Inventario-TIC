@@ -1,6 +1,33 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Bell, Search, Package, ChevronDown, User, Lock, LogOut, X, Camera, Upload, Eye, EyeOff } from 'lucide-react';
+import { Bell, Search, Package, ChevronDown, User, Lock, LogOut, X, Camera, Upload, Eye, EyeOff, Menu } from 'lucide-react';
 import { useStock } from '../context/StockContext';
+import api from '../api';
+
+const formatName = (str) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => {
+      const cleanWord = word.replace(/[^a-z]/g, '');
+      if (['cpus', 'gpus', 'ssd', 'hdd', 'ram', 'psu'].includes(cleanWord)) {
+        return word.toUpperCase();
+      }
+      if (['y', 'e', 'de', 'para', 'con', 'en'].includes(cleanWord) && word !== str.split(' ')[0].toLowerCase()) {
+        return word;
+      }
+      if (word.startsWith('(')) {
+        const inside = word.slice(1);
+        const cleanInside = inside.replace(/[^a-z]/g, '');
+        if (['cpus', 'gpus', 'ssd', 'hdd', 'ram', 'psu'].includes(cleanInside)) {
+          return '(' + inside.toUpperCase();
+        }
+        return '(' + inside.charAt(0).toUpperCase() + inside.slice(1);
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+};
 
 const Modal = ({ title, onClose, onSave, children }) => (
   <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 italic">
@@ -16,7 +43,7 @@ const Modal = ({ title, onClose, onSave, children }) => (
   </div>
 );
 
-const Header = ({ equipos = [], onSearch, user, onLogout, onUpdateUser }) => {
+const Header = ({ equipos = [], onSearch, user, onLogout, onUpdateUser, onToggleSidebar }) => {
   const { stockLimit } = useStock();
   const [showNotis, setShowNotis] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -79,10 +106,19 @@ const Header = ({ equipos = [], onSearch, user, onLogout, onUpdateUser }) => {
 
   return (
     <header className="bg-[#151521] border-b border-gray-800 p-4 flex justify-between items-center sticky top-0 z-50 italic">
-      <div className="flex-1 max-w-xl relative">
-        <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
-        <input type="text" placeholder="Buscar por serie, equipo o responsable..." onChange={(e) => onSearch(e.target.value)}
-          className="w-full bg-[#1e1e2d] border border-gray-800 rounded-xl py-2 pl-10 pr-4 text-sm text-white outline-none focus:border-indigo-500 font-bold" />
+      <div className="flex-1 max-w-xl flex items-center gap-3">
+        <button 
+          onClick={onToggleSidebar}
+          className="lg:hidden p-2 hover:bg-gray-800 rounded-xl text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
+          aria-label="Abrir menú"
+        >
+          <Menu size={20} />
+        </button>
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
+          <input type="text" placeholder="Buscar por serie, equipo o responsable..." onChange={(e) => onSearch(e.target.value)}
+            className="w-full bg-[#1e1e2d] border border-gray-800 rounded-xl py-2 pl-10 pr-4 text-sm text-white outline-none focus:border-indigo-500 font-bold" />
+        </div>
       </div>
 
       <div className="flex items-center gap-6">
@@ -95,18 +131,41 @@ const Header = ({ equipos = [], onSearch, user, onLogout, onUpdateUser }) => {
             {bajoStock.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-[#151521]"></span>}
           </button>
           {showNotis && (
-            <div className="absolute right-0 mt-3 w-80 bg-[#1e1e2d] border border-gray-800 rounded-2xl shadow-2xl p-4 z-50">
-              <h4 className="text-[10px] font-black text-gray-500 uppercase mb-3 tracking-widest">Notificaciones</h4>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-2 scrollbar-hide">
+            <div className="absolute right-0 mt-3 w-80 bg-[#1e1e2d]/95 backdrop-blur-md border border-gray-800 rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-800/60">
+                <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Notificaciones</h4>
+                {bajoStock.length > 0 && (
+                  <span className="text-[8px] font-black bg-red-500/10 border border-red-500/20 text-red-400 px-1.5 py-0.5 rounded-md">
+                    {bajoStock.length} Alertas
+                  </span>
+                )}
+              </div>
+              
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1 scrollbar-hide">
                 {bajoStock.length > 0 ? bajoStock.map((item, i) => (
-                  <div key={i} className="flex gap-3 p-3 bg-red-500/5 border border-red-500/10 rounded-xl">
-                    <div className="text-red-500"><Package size={16}/></div>
-                    <div>
-                      <p className="text-[10px] text-white font-bold uppercase tracking-tight">Stock Bajo: {item.name}</p>
-                      <p className="text-[9px] text-red-400 font-medium tracking-tight">Solo quedan {item.count} unidades.</p>
+                  <div key={i} className="flex gap-3 p-3 bg-red-500/[0.02] hover:bg-red-500/[0.05] border border-red-500/10 hover:border-red-500/20 rounded-xl transition-all duration-200">
+                    <div className="text-red-400 shrink-0 mt-0.5 animate-pulse">
+                      <Package size={16}/>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Alerta de Stock Bajo</p>
+                      <p className="text-[11px] text-white font-extrabold leading-tight mt-0.5 truncate">
+                        {formatName(item.name)}
+                      </p>
+                      <p className="text-[9.5px] text-red-400 font-semibold mt-1">
+                        Solo quedan <span className="font-black underline">{item.count}</span> unidades disponibles.
+                      </p>
                     </div>
                   </div>
-                )) : <p className="text-[10px] text-gray-500 text-center py-4 font-bold uppercase">Todo está en orden</p>}
+                )) : (
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <div className="bg-emerald-500/10 text-emerald-400 p-2.5 rounded-full border border-emerald-500/20 mb-2">
+                      <Bell size={20} />
+                    </div>
+                    <p className="text-[10px] text-emerald-400 font-black uppercase tracking-wider">Todo en Orden</p>
+                    <p className="text-[8.5px] text-gray-500 font-semibold mt-0.5">El stock de tus equipos está al día</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

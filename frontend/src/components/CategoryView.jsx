@@ -13,18 +13,18 @@ const CategoryView = ({ category, onBack, initialSubcat }) => {
   if (!category) return null;
 
   return (
-    <div className="p-8 space-y-10 bg-[#151521] min-h-screen text-white animate-in fade-in duration-700">
+    <div className="p-4 sm:p-8 space-y-10 bg-[#151521] min-h-screen text-white animate-in fade-in duration-700">
       {/* Header Premium */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-start sm:items-center gap-4 sm:gap-6">
           <button 
             onClick={onBack}
-            className="group p-4 bg-gray-800/30 hover:bg-indigo-600 rounded-[1.5rem] transition-all duration-500 shadow-xl border border-gray-800/50 hover:border-indigo-500/50"
+            className="group p-3 sm:p-4 bg-gray-800/30 hover:bg-indigo-600 rounded-[1.5rem] transition-all duration-500 shadow-xl border border-gray-800/50 hover:border-indigo-500/50 shrink-0"
           >
-            <ArrowLeft size={24} className="text-gray-500 group-hover:text-white transition-colors" />
+            <ArrowLeft size={20} className="text-gray-500 group-hover:text-white transition-colors" />
           </button>
           <div>
-            <div className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">
+            <div className="flex flex-wrap items-center gap-2 text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-[0.15em] sm:tracking-[0.2em] mb-2 leading-relaxed">
               <span>Inventario Global</span>
               <ChevronRight size={10} className="text-gray-700" />
               <span className="px-2 py-0.5 rounded bg-gray-800/50 border border-gray-800" style={{ color: category.color }}>{category.nombre}</span>
@@ -35,7 +35,7 @@ const CategoryView = ({ category, onBack, initialSubcat }) => {
                 </>
               )}
             </div>
-            <h2 className="text-5xl font-black italic uppercase tracking-tighter leading-none">
+            <h2 className="text-2xl sm:text-5xl font-black italic uppercase tracking-tighter leading-tight sm:leading-none">
               {selectedSubcat ? selectedSubcat.nombre : category.nombre}
             </h2>
           </div>

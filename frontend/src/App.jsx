@@ -18,11 +18,17 @@ function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [preselectedCategory, setPreselectedCategory] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isAuth') === 'true');
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('userData')) || null);
 
   const { stockLimit } = useStock();
+
+  const handleSetView = (newView) => {
+    setView(newView);
+    setIsSidebarOpen(false);
+  };
 
   const fetchEquipos = async () => {
     try {
@@ -78,6 +84,7 @@ function App() {
      setSelectedCategory(cat);
      setSelectedSubcategory(subcat);
      setView('category_details');
+     setIsSidebarOpen(false);
   };
 
   const handleAddToCategory = (cat) => {
@@ -114,21 +121,33 @@ function App() {
   };
 
   return (
-    <div className="flex bg-[#151521] min-h-screen font-sans text-gray-200 overflow-hidden italic">
+    <div className="flex bg-[#151521] min-h-screen font-sans text-gray-200 overflow-hidden italic relative">
+      {/* Backdrop blur for mobile drawer sidebar */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      
       <Sidebar 
-        setView={setView} 
+        setView={handleSetView} 
         currentView={view} 
         equiposReales={equipos} 
         onSelectCategory={handleSelectCategory}
         user={user}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      
+      <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
         <Header 
           equipos={equipos} 
           onSearch={setSearchTerm} 
           user={user} 
           onLogout={handleLogout} 
           onUpdateUser={handleUpdateUser} 
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         /> 
         <main className="flex-1 overflow-y-auto p-2 scrollbar-hide">
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Plus, Search, Trash2, UserCheck, Wrench, Calendar, Box, AlertTriangle, Upload, FileDown } from 'lucide-react';
+import { Edit, Plus, Search, Trash2, UserCheck, Wrench, Calendar, Box, AlertTriangle, Upload, FileDown, Archive } from 'lucide-react';
 import api from '../api';
 import EquipoModal from './EquipoModal';
 import { useToast } from './Toast';
@@ -63,6 +63,42 @@ const BajaModal = ({ equipo, onConfirm, onCancel }) => {
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Mini-modal para eliminación física de registros ───────────────────────────
+const DeleteConfirmModal = ({ equipo, onConfirm, onCancel }) => {
+  return (
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
+      <div className="bg-[#1e1e2d] border border-red-500/30 w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden transform scale-95 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center gap-3 p-6 border-b border-gray-800/50 bg-red-500/5">
+          <div className="p-2 bg-red-500/20 rounded-xl"><AlertTriangle size={20} className="text-red-400"/></div>
+          <div>
+            <h3 className="text-lg font-black text-white uppercase italic">Eliminar Registro</h3>
+            <p className="text-[10px] text-red-500/70 font-bold uppercase mt-0.5">Acción Irreversible</p>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          <p className="text-xs text-gray-300 leading-relaxed uppercase tracking-wider font-bold">
+            ¿Estás absolutamente seguro de eliminar permanentemente el equipo <span className="text-white font-black text-sm">"{equipo?.nombre_equipo}"</span> con Serie <span className="text-white font-black text-sm">"{equipo?.serie}"</span>?
+          </p>
+          <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 p-4 rounded-2xl font-black uppercase tracking-widest leading-normal">
+            ⚠️ Esta acción borrará de forma física el registro de la base de datos definitivamente. No se podrá recuperar ni deshacer.
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onCancel}
+              className="flex-1 bg-gray-800 text-gray-400 font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-gray-700 transition-all">
+              Cancelar
+            </button>
+            <button type="button" onClick={onConfirm}
+              className="flex-[2] bg-red-600 text-white font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-red-700 hover:shadow-red-950/50 hover:shadow-lg transition-all shadow-md">
+              Eliminar Permanentemente
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden, isManualModalOpen, setIsManualModalOpen, preselectedCategory, onRefresh, user }) => { 
   const [data, setData] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -70,6 +106,7 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bajaTarget, setBajaTarget] = useState(null); // equipo pendiente de baja
+  const [deleteTarget, setDeleteTarget] = useState(null); // equipo pendiente de eliminación
 
   const isOpen = isModalOpen || isEditModalOpen || isManualModalOpen;
   const setOpen = (val) => {
@@ -195,6 +232,20 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    try {
+      showToast("Eliminando registro permanentemente...", "info");
+      await api.delete(`equipos/${deleteTarget.id}/`);
+      showToast("Registro de equipo eliminado de la base de datos.", "success");
+      setDeleteTarget(null);
+      await handleRefresh();
+    } catch (err) {
+      console.error("Error al eliminar equipo:", err);
+      showToast("No se pudo eliminar el registro del equipo.", "error");
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '---';
     const [year, month, day] = dateString.split('-');
@@ -223,7 +274,7 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
   }
 
   return (
-    <div className="p-8 space-y-6 text-white animate-in fade-in duration-500">
+    <div className="p-4 sm:p-8 space-y-6 text-white animate-in fade-in duration-500">
       {/* Modal de Baja */}
       {bajaTarget && (
         <BajaModal
@@ -233,17 +284,26 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
         />
       )}
 
-      <div className="flex justify-between items-center">
+      {/* Modal de Eliminación Física */}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          equipo={deleteTarget}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white">
+          <h2 className="text-xl sm:text-3xl font-black italic uppercase tracking-tighter text-white leading-tight">
             {viewConfig[currentView]?.title || "INVENTARIO"}
           </h2>
           <div className="h-1 w-20 bg-indigo-600 rounded-full mt-1"></div>
         </div>
         
         {user?.rol !== 'VIEWER' && (
-          <div className="flex gap-3">
-            <label className="bg-emerald-600 px-5 py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-700 shadow-lg transition-all cursor-pointer">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <label className="bg-emerald-600 px-5 py-3 sm:py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 shadow-lg transition-all cursor-pointer w-full sm:w-auto">
               <Upload size={16} /> IMPORTAR EXCEL
               <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImport} />
             </label>
@@ -252,7 +312,7 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
               setSelectedEquipo(defaultEq); 
               setIsModalOpen(true); 
             }} 
-              className="bg-indigo-600 px-5 py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 shadow-lg transition-all">
+              className="bg-indigo-600 px-5 py-3 sm:py-2 rounded-xl font-black italic text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-lg transition-all w-full sm:w-auto">
               <Plus size={16} /> NUEVO EQUIPO
             </button>
           </div>
@@ -333,7 +393,8 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
                       <button onClick={() => { setSelectedEquipo({...item, estado: 'ASIGNADO'}); setIsEditModalOpen(true); }} className="p-2 text-sky-400 hover:bg-sky-400/10 rounded-lg transition-all" title="Asignar Equipo (Completar Datos)"><UserCheck size={16}/></button>
                       <button onClick={() => handleMove(item, 'DISPONIBLE')} className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all" title="Regresar a Bodega"><Box size={16}/></button>
                       <button onClick={() => handleMove(item, 'REPARACION')} className="p-2 text-amber-400 hover:bg-amber-400/10 rounded-lg transition-all" title="Mantenimiento"><Wrench size={16}/></button>
-                      <button onClick={() => handleMove(item, 'BAJA')} className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-all" title="Dar de Baja (Retiro)"><Trash2 size={16}/></button>
+                      <button onClick={() => handleMove(item, 'BAJA')} className="p-2 text-rose-400/80 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-all" title="Dar de Baja (Retiro)"><Archive size={16}/></button>
+                      <button onClick={() => setDeleteTarget(item)} className="p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Eliminar Registro Permanentemente"><Trash2 size={16}/></button>
                       <div className="w-[1px] bg-gray-800 mx-1"></div>
                       <button onClick={() => { setSelectedEquipo(item); setIsEditModalOpen(true); }} className="p-2 text-gray-400 hover:text-white transition-all" title="Editar Registro"><Edit size={16}/></button>
                   </td>
