@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Box, ChevronRight } from 'lucide-react';
 import DataTable from './DataTable';
 
-const CategoryView = ({ category, onBack, initialSubcat }) => {
+const CategoryView = ({ category, onBack, initialSubcat, searchTerm }) => {
   const [selectedSubcat, setSelectedSubcat] = useState(initialSubcat || null);
 
   // Update selection if initialSubcat changes (e.g. clicking different subcat in sidebar)
@@ -85,6 +85,7 @@ const CategoryView = ({ category, onBack, initialSubcat }) => {
             currentView="category_filter" 
             categoryId={category.id}
             subcategoryId={selectedSubcat?.id}
+            searchTerm={searchTerm}
           />
         </div>
       </div>

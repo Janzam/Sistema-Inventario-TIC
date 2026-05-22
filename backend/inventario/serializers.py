@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Equipo, Profile, Categoria, Subcategoria, Persona
+from .models import Equipo, Profile, Categoria, Subcategoria, Persona, Noticia
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -98,3 +98,11 @@ class EquipoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Error: Este código de activo fijo ya pertenece a otro equipo.")
             
         return af_nuevo
+
+class NoticiaSerializer(serializers.ModelSerializer):
+    creado_por_nombre = serializers.ReadOnlyField(source='creado_por.first_name')
+    
+    class Meta:
+        model = Noticia
+        fields = ['id', 'titulo', 'contenido', 'prioridad', 'activa', 'fecha_creacion', 'fecha_actualizacion', 'creado_por', 'creado_por_nombre']
+        read_only_fields = ['creado_por', 'fecha_creacion', 'fecha_actualizacion']

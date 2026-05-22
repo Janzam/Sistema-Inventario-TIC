@@ -254,10 +254,28 @@ const DataTable = ({ currentView, searchTerm, categoryId, subcategoryId, hidden,
 
   const filteredData = data.filter(item => {
     const term = searchTerm?.toLowerCase() || "";
+    if (!term) return true;
+
+    const serie = item.serie?.toLowerCase() || "";
+    const nombreEquipo = item.nombre_equipo?.toLowerCase() || "";
+    const usuarioAsignado = item.usuario_asignado?.toLowerCase() || "";
+    const usuarioDetalleNombre = item.usuario_asignado_detalle?.nombre?.toLowerCase() || "";
+    const creadoPor = item.creado_por?.toLowerCase() || "";
+    const marca = item.marca?.toLowerCase() || "";
+    const modelo = item.modelo?.toLowerCase() || "";
+    const activoFijo = item.activo_fijo?.toLowerCase() || "";
+    const departamento = item.departamento?.toLowerCase() || "";
+
     return (
-      item.serie.toLowerCase().includes(term) || 
-      item.nombre_equipo.toLowerCase().includes(term) ||
-      (item.usuario_asignado && item.usuario_asignado.toLowerCase().includes(term))
+      serie.includes(term) ||
+      nombreEquipo.includes(term) ||
+      usuarioAsignado.includes(term) ||
+      usuarioDetalleNombre.includes(term) ||
+      creadoPor.includes(term) ||
+      marca.includes(term) ||
+      modelo.includes(term) ||
+      activoFijo.includes(term) ||
+      departamento.includes(term)
     );
   });
 

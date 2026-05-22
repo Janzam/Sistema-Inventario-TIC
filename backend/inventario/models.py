@@ -136,3 +136,30 @@ class Persona(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.identificacion})"
+
+class Noticia(models.Model):
+    PRIORIDADES = [
+        ('BAJA', 'Baja'),
+        ('MEDIA', 'Media'),
+        ('ALTA', 'Alta'),
+        ('URGENTE', 'Urgente'),
+    ]
+    
+    titulo = models.CharField(max_length=200)
+    contenido = models.TextField()
+    prioridad = models.CharField(max_length=10, choices=PRIORIDADES, default='MEDIA')
+    activa = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='noticias'
+    )
+    
+    class Meta:
+        ordering = ['-fecha_creacion']
+        verbose_name_plural = 'Noticias'
+    
+    def __str__(self):
+        return self.titulo

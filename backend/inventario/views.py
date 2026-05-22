@@ -9,10 +9,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authtoken.models import Token
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.chart import PieChart, BarChart, Reference
-from .models import Equipo, Profile, Categoria, Subcategoria, Persona
+from .models import Equipo, Profile, Categoria, Subcategoria, Persona, Noticia
 from .serializers import (
     EquipoSerializer, UserSerializer, ProfileSerializer, 
-    CategoriaSerializer, SubcategoriaSerializer, PersonaSerializer
+    CategoriaSerializer, SubcategoriaSerializer, PersonaSerializer, NoticiaSerializer
 )
 
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -415,128 +415,436 @@ class EquipoViewSet(viewsets.ModelViewSet):
         if not file:
             return Response({"error": "No se proporcionó ningún archivo"}, status=400)
 
+        import random
+        import string
+        import datetime
+        from django.db import IntegrityError
+
         try:
-            # Leer el archivo excel (soporta .xls, .xlsx)
-            df = pd.read_excel(file)
-            
-            # Limpiar nombres de columnas: strip, upper, y remover posibles saltos de línea
-            df.columns = [str(c).strip().upper().replace('\n', ' ') for c in df.columns]
+            # Cargar el libro de trabajo Excel
+            xls = pd.ExcelFile(file)
             
             created_count = 0
+            updated_count = 0
+            skipped_count = 0
             errors = []
+            warnings = []
+            
+            # Helper para validar números de serie
+            def is_valid_serie(val):
+                if pd.isna(val):
+                    return False
+                val_str = str(val).strip().upper()
+                if val_str in ['', 'N/A', 'NONE', 'NULL', 'SIN SERIE', '......', '.......', '****', '............', '************', '------------']:
+                    return False
+                if all(c in '.-* ' for c in val_str):
+                    return False
+                return True
 
-            # Mapeo de columnas basado en el formato del usuario
-            mapping = {
-                'EQUIPO': 'nombre_equipo',
-                'MARCA': 'marca',
-                'SERIE': 'serie',
-                'MODELO': 'modelo',
-                'ACTIVO FIJO': 'activo_fijo',
-                'ESTADO': 'estado_raw',
-                'USUARIO': 'usuario_raw',
-                'FECHA': 'fecha_ingreso'
-            }
+            # Helper para limpiar strings
+            def clean_str(val):
+                if pd.isna(val):
+                    return None
+                val_str = str(val).strip().upper()
+                if val_str in ['', 'N/A', 'NONE', 'NULL', '......', '............', '************', '------------']:
+                    return None
+                return val_str
 
-            for index, row in df.iterrows():
+            # Helper para parsear fechas
+            def parse_excel_date(val):
+                if pd.isna(val) or str(val).strip() in ['', 'N/A', 'NONE', 'NULL', '......', '............']:
+                    return None
                 try:
-                    data = {}
-                    for excel_col, model_field in mapping.items():
-                        # Buscar coincidencia parcial o exacta
-                        found_col = None
-                        for actual_col in df.columns:
-                            if excel_col in actual_col:
-                                found_col = actual_col
-                                break
+                    if isinstance(val, (pd.Timestamp, datetime.date, datetime.datetime)):
+                        return pd.to_datetime(val).date()
+                    if isinstance(val, (int, float)):
+                        return (pd.to_datetime('1899-12-30') + pd.to_timedelta(val, unit='D')).date()
+                    return pd.to_datetime(str(val).strip()).date()
+                except:
+                    return None
+
+            # Helper para clasificar Subcategorías
+            def find_subcategoria(nombre_eq):
+                if not nombre_eq:
+                    return None
+                nombre_lower = nombre_eq.lower()
+                
+                categories_mapping = [
+                    {
+                        "categoria": "Hardware y Componentes Internos",
+                        "color": "#3b82f6",
+                        "subcategorias": [
+                            {
+                                "nombre": "Placas y Memoria (RAM/Motherboards/NIC)",
+                                "keywords": ['ram', 'memoria ram', 'motherboard', 'placa', 'tarjeta de red', 'nic']
+                            },
+                            {
+                                "nombre": "Almacenamiento (HDD/SSD/Externos)",
+                                "keywords": ['ssd', 'hdd', 'disco', 'disk', 'cd-r', 'dvd-r']
+                            },
+                            {
+                                "nombre": "Unidades de Procesamiento (CPUs/GPUs)",
+                                "keywords": ['cpu', 'gpu', 'tarjeta de video', 'procesador']
+                            },
+                            {
+                                "nombre": "Energía (PSU/Adaptadores/Baterías)",
+                                "keywords": ['bateria', 'ups', 'cargador', 'fuente', 'adaptador de voltaje', 'adaptador de energia', 'adaptador 12v', 'pila']
+                            },
+                            {
+                                "nombre": "Carcasas y Gabinetes",
+                                "keywords": ['case', 'gabinete', 'carcasa']
+                            }
+                        ]
+                    },
+                    {
+                        "categoria": "Equipos de Comunicación y Telefonía",
+                        "color": "#10b981",
+                        "subcategorias": [
+                            {
+                                "nombre": "Networking (Routers/Switches/APs/Firewalls)",
+                                "keywords": ['router', 'switch', 'ap', 'access point', 'firewall', 'antena', 'modem', 'nanostation', 'adaptador de red', 'transceiver']
+                            },
+                            {
+                                "nombre": "Telefonía (IP/Analógicos/PBX)",
+                                "keywords": ['telefono', 'intercomunicador', 'pbx', 'auricular', 'headset']
+                            }
+                        ]
+                    },
+                    {
+                        "categoria": "Periféricos y Accesorios",
+                        "color": "#f59e0b",
+                        "subcategorias": [
+                            {
+                                "nombre": "Entrada/Salida (Teclados/Mouses/Monitores)",
+                                "keywords": ['teclado', 'mouse', 'raton', 'monitor', 'pantalla', 'parlante', 'altavoz', 'microfono', 'webcam', 'camara']
+                            },
+                            {
+                                "nombre": "Imagen (Proyectores/Scanners/Printers)",
+                                "keywords": ['proyector', 'scanner', 'impresora', 'printer', 'fotocopiadora']
+                            }
+                        ]
+                    },
+                    {
+                        "categoria": "Cableado y Conectividad",
+                        "color": "#8b5cf6",
+                        "subcategorias": [
+                            {
+                                "nombre": "Red (UTP/Fibra/Patch Cords)",
+                                "keywords": ['cable', 'patch', 'utp', 'fibra']
+                            },
+                            {
+                                "nombre": "Video (HDMI/DP/VGA/DVI)",
+                                "keywords": ['hdmi', 'vga', 'displayport', 'dvi', 'dp']
+                            },
+                            {
+                                "nombre": "Datos y Poder (USB/C13/Serial)",
+                                "keywords": ['usb', 'c13', 'serial', 'otg']
+                            }
+                        ]
+                    },
+                    {
+                        "categoria": "Insumos de Limpieza y Mantenimiento",
+                        "color": "#ec4899",
+                        "subcategorias": [
+                            {
+                                "nombre": "Gestión Térmica (Pasta/Pads)",
+                                "keywords": ['pasta termica', 'pad termico', 'thermal']
+                            },
+                            {
+                                "nombre": "Limpieza Interna (Aire/Contact Cleaner)",
+                                "keywords": ['limpiador', 'aire comprimido', 'contact cleaner', 'isopropilico']
+                            },
+                            {
+                                "nombre": "Limpieza de Superficies",
+                                "keywords": ['superficies', 'alcohol', 'gel', 'paño', 'wipe']
+                            }
+                        ]
+                    },
+                    {
+                        "categoria": "Lubricantes y Químicos Especializados",
+                        "color": "#06b6d4",
+                        "subcategorias": [
+                            {
+                                "nombre": "Aceites de Precisión",
+                                "keywords": ['aceite']
+                            },
+                            {
+                                "nombre": "Grasas (Litio/Grafito)",
+                                "keywords": ['grasa', 'grasas']
+                            },
+                            {
+                                "nombre": "Aflojatodo y Limpiadores de Rodillos",
+                                "keywords": ['wd-40', 'aflojatodo', 'limpiador rodillos']
+                            }
+                        ]
+                    },
+                    {
+                        "categoria": "Herramientas y Misceláneos",
+                        "color": "#6366f1",
+                        "subcategorias": [
+                            {
+                                "nombre": "Herramientas (Screwdrivers/Multimeters/Testers)",
+                                "keywords": ['destornillador', 'multimetro', 'tester', 'pinza', 'cautin', 'herramienta']
+                            },
+                            {
+                                "nombre": "Consumibles de Oficina (Tóner/Tinta/Papel)",
+                                "keywords": ['toner', 'tinta', 'cartucho', 'papel', 'cinta']
+                            }
+                        ]
+                    }
+                ]
+                
+                # 1. Coincidencia por palabras clave con creación automática
+                for cat_data in categories_mapping:
+                    for sub_data in cat_data["subcategorias"]:
+                        if any(kw in nombre_lower for kw in sub_data["keywords"]):
+                            cat_obj, _ = Categoria.objects.get_or_create(
+                                nombre=cat_data["categoria"],
+                                defaults={"color": cat_data["color"]}
+                            )
+                            sub_obj, _ = Subcategoria.objects.get_or_create(
+                                categoria=cat_obj,
+                                nombre=sub_data["nombre"]
+                            )
+                            return sub_obj
+                
+                # 2. Fallback por coincidencia parcial de palabras
+                words = [w for w in nombre_lower.split() if len(w) > 3]
+                for w in words:
+                    sub = Subcategoria.objects.filter(nombre__icontains=w).first()
+                    if sub:
+                        return sub
+                
+                # 3. Fallback con creación de Categoría por Defecto
+                cat_other, _ = Categoria.objects.get_or_create(
+                    nombre="Otros Equipos y Dispositivos",
+                    defaults={"color": "#6b7280"}
+                )
+                sub_other, _ = Subcategoria.objects.get_or_create(
+                    categoria=cat_other,
+                    nombre="Otros"
+                )
+                return sub_other
+
+            # Procesar todas las pestañas (sheets) del archivo Excel
+            for sheet_name in xls.sheet_names:
+                df_raw = pd.read_excel(xls, sheet_name=sheet_name, header=None)
+                
+                # Detectar la fila de encabezados (buscando en las primeras 10 filas)
+                header_row_idx = None
+                for idx in range(min(10, len(df_raw))):
+                    row_vals = [str(x).strip().lower() for x in df_raw.iloc[idx].tolist() if pd.notna(x)]
+                    if any('serie' in x for x in row_vals) or (any('equipo' in x for x in row_vals) and any('marca' in x for x in row_vals)):
+                        header_row_idx = idx
+                        break
+                
+                if header_row_idx is None:
+                    continue  # La pestaña no contiene una tabla de inventario reconocible
+
+                # Cargar la pestaña desde la fila de encabezado detectada
+                df = pd.read_excel(xls, sheet_name=sheet_name, skiprows=header_row_idx)
+                
+                # Limpiar nombres de columnas
+                df.columns = [str(c).strip().upper().replace('\n', ' ') for c in df.columns]
+                
+                # Heurística de mapeo de columnas
+                mapping_cols = {
+                    'nombre_equipo': ['EQUIPO', 'PRODUCTO', 'MONITORES ASIGNADOS'],
+                    'marca': ['MARCA'],
+                    'serie': ['SERIE', 'SERIE DE EQUIPO'],
+                    'modelo': ['MODELO'],
+                    'activo_fijo': ['ACTIVO FIJO', 'ACTIVO'],
+                    'estado_raw': ['ESTADO'],
+                    'usuario_raw': ['USUARIO', 'RESPONSABLE', 'ENTREGADO A'],
+                    'fecha_raw': ['FECHA', 'FECHA ENTREGA', 'FECHA INGRESO'],
+                    'novedad_raw': ['NOVEDAD', 'MOTIVO', 'OBSERVACIONES']
+                }
+                
+                # Resolver qué columna exacta corresponde en esta hoja
+                col_indices = {}
+                for key, alternatives in mapping_cols.items():
+                    for alt in alternatives:
+                        match = [c for c in df.columns if alt in c]
+                        if match:
+                            col_indices[key] = match[0]
+                            break
+
+                # Obligatorio tener al menos EQUIPO y SERIE en la pestaña
+                if 'nombre_equipo' not in col_indices or 'serie' not in col_indices:
+                    continue
+
+                for index, row in df.iterrows():
+                    try:
+                        raw_eq = row[col_indices['nombre_equipo']] if 'nombre_equipo' in col_indices else None
+                        raw_se = row[col_indices['serie']] if 'serie' in col_indices else None
                         
-                        if found_col:
-                            val = row[found_col]
-                            if pd.isna(val) or str(val).strip() == '':
-                                data[model_field] = None
-                            else:
-                                data[model_field] = str(val).strip()
-
-                    # Validaciones básicas de fila
-                    if not data.get('nombre_equipo') or not data.get('serie'):
-                        continue
-
-                    # 1. Manejo de Usuario (como simple string)
-                    usuario_asignado = None
-                    usuario_raw = data.get('usuario_raw')
-                    if usuario_raw and usuario_raw.upper() not in ['BODEGA', 'SIN ASIGNAR', 'N/A', '----------']:
-                        usuario_asignado = usuario_raw.upper().strip()
-
-                    # 2. Normalización de Estado
-                    estado = 'DISPONIBLE'
-                    if usuario_asignado:
-                        estado = 'ASIGNADO'
-                    
-                    estado_excel = str(data.get('estado_raw', '')).upper()
-                    if 'BAJA' in estado_excel:
-                        estado = 'BAJA'
-                    elif 'REPARACION' in estado_excel or 'MANTENIMIENTO' in estado_excel:
-                        estado = 'REPARACION'
-
-                    # 3. Conversión de Fecha
-                    fecha_ing = None
-                    raw_date = data.get('fecha_ingreso')
-                    if raw_date:
-                        try:
-                            fecha_ing = pd.to_datetime(raw_date).date()
-                        except:
-                            pass
-
-                    # 4. Verificar si ya existe para actualizar o crear
-                    equipo_existente = Equipo.objects.filter(serie__iexact=data['serie']).first()
-                    
-                    # Determinar qué fecha actualizar según el estado
-                    fecha_update = {}
-                    if estado == 'BAJA':
-                        fecha_update['fecha_baja'] = fecha_ing
-                    else:
-                        fecha_update['fecha_ingreso'] = fecha_ing
-
-                    if equipo_existente:
-                        # Actualizar solo campos específicos solicitados
-                        equipo_existente.estado = estado
-                        equipo_existente.usuario_asignado = usuario_asignado
-                        if 'fecha_ingreso' in fecha_update:
-                            equipo_existente.fecha_ingreso = fecha_update['fecha_ingreso']
-                        if 'fecha_baja' in fecha_update:
-                            equipo_existente.fecha_baja = fecha_update['fecha_baja']
+                        nombre_equipo = clean_str(raw_eq)
+                        serie_clean = clean_str(raw_se)
                         
-                        equipo_existente.nombre_equipo = data['nombre_equipo'].upper()
-                        equipo_existente.marca = data.get('marca', '').upper() if data.get('marca') else equipo_existente.marca
-                        equipo_existente.modelo = data.get('modelo', '').upper() if data.get('modelo') else equipo_existente.modelo
-                        
-                        equipo_existente.save()
-                        created_count += 1
-                    else:
-                        # 5. Crear el registro si no existe
-                        Equipo.objects.create(
-                            creado_por=request.user,
-                            nombre_equipo=data['nombre_equipo'].upper(),
-                            serie=data['serie'].upper(),
-                            marca=data.get('marca', '').upper() if data.get('marca') else None,
-                            modelo=data.get('modelo', '').upper() if data.get('modelo') else None,
-                            activo_fijo=data.get('activo_fijo') if data.get('activo_fijo') and '---' not in str(data.get('activo_fijo')) else None,
-                            estado=estado,
-                            usuario_asignado=usuario_asignado,
-                            fecha_ingreso=fecha_update.get('fecha_ingreso'),
-                            fecha_baja=fecha_update.get('fecha_baja'),
-                            subcategoria=None 
-                        )
-                        created_count += 1
+                        # 1. Validaciones básicas de la fila
+                        if not nombre_equipo:
+                            continue
+                            
+                        if not is_valid_serie(serie_clean):
+                            skipped_count += 1
+                            warnings.append(f"Hoja '{sheet_name}' - Fila {index + header_row_idx + 2}: Registro '{nombre_equipo}' omitido por número de serie vacío o inválido ('{raw_se}').")
+                            continue
 
-                except Exception as e:
-                    errors.append(f"Fila {index + 2}: {str(e)}")
+                        # Limpieza y extracción de los demás campos
+                        marca = clean_str(row[col_indices['marca']]) if 'marca' in col_indices else None
+                        modelo = clean_str(row[col_indices['modelo']]) if 'modelo' in col_indices else None
+                        activo_fijo = clean_str(row[col_indices['activo_fijo']]) if 'activo_fijo' in col_indices else None
+                        estado_raw = clean_str(row[col_indices['estado_raw']]) if 'estado_raw' in col_indices else ''
+                        usuario_raw = clean_str(row[col_indices['usuario_raw']]) if 'usuario_raw' in col_indices else None
+                        fecha_raw = row[col_indices['fecha_raw']] if 'fecha_raw' in col_indices else None
+                        novedad_raw = clean_str(row[col_indices['novedad_raw']]) if 'novedad_raw' in col_indices else None
+
+                        # Soporte para Sección o Bloque como Departamento
+                        departamento = None
+                        dept_col = [c for c in df.columns if 'SECCION' in c or 'BLOQUE' in c or 'DEPARTAMENTO' in c]
+                        if dept_col:
+                            departamento = clean_str(row[dept_col[0]])
+
+                        # Limpieza de usuario si es un placeholder de celdas vacías
+                        if usuario_raw and usuario_raw in ['', 'BODEGA', 'SIN ASIGNAR', 'N/A', '----------', '............', '******']:
+                            usuario_raw = None
+
+                        # Normalización de Estado
+                        estado = 'DISPONIBLE'
+                        if 'BAJA' in estado_raw or 'RETIRADO' in estado_raw or 'ELIMINADO' in estado_raw:
+                            estado = 'BAJA'
+                        elif 'REPARACION' in estado_raw or 'MANTENIMIENTO' in estado_raw or 'SERVICIO' in estado_raw:
+                            estado = 'REPARACION'
+                        elif 'ENTREGADO' in estado_raw or 'ASIGNADO' in estado_raw or 'ACTIVO' in estado_raw or usuario_raw:
+                            estado = 'ASIGNADO'
+
+                        # Heurística especial: Si el estado es Entregado pero no hay columna de usuario,
+                        # pero en NOVEDAD viene el nombre de la persona (típico de hojas 'Entregado')
+                        if estado == 'ASIGNADO' and not usuario_raw:
+                            if novelty_contains_name := clean_str(novedad_raw):
+                                if 'ENTREGA' in sheet_name.upper() or 'ENTREGADO' in sheet_name.upper() or 'PENDIENTES' in sheet_name.upper():
+                                    if len(novelty_contains_name) < 35 and not any(x in novelty_contains_name for x in ['SOPLADA', 'DAÑADO', 'DAÑADA', 'ROTO', 'BISAGRA', 'PANTALLA', 'MALLA', 'TOTAL', 'TICKET']):
+                                        usuario_raw = novelty_contains_name
+                                        novedad_raw = None
+
+                        usuario_asignado = usuario_raw
+
+                        # 2. Agregar automáticamente a la Persona como usuario si no existe
+                        if usuario_asignado:
+                            persona_existente = Persona.objects.filter(nombre__iexact=usuario_asignado).first()
+                            if not persona_existente:
+                                # Generar identificación única aleatoria de 10 dígitos
+                                identificacion = ''.join(random.choices(string.digits, k=10))
+                                while Persona.objects.filter(identificacion=identificacion).exists():
+                                    identificacion = ''.join(random.choices(string.digits, k=10))
+                                
+                                Persona.objects.create(
+                                    nombre=usuario_asignado,
+                                    identificacion=identificacion,
+                                    rol='VIEWER'
+                                )
+
+                        # 3. Conversión y parsing de fechas
+                        fecha_ing = parse_excel_date(fecha_raw)
+                        fecha_baja = parse_excel_date(fecha_raw) if estado == 'BAJA' else None
+                        fecha_asignacion = parse_excel_date(fecha_raw) if estado == 'ASIGNADO' else None
+
+                        # 4. Validación de Activo Fijo (Garantizar unicidad en la BD)
+                        if activo_fijo:
+                            existing_af = Equipo.objects.filter(activo_fijo__iexact=activo_fijo).exclude(serie__iexact=serie_clean).first()
+                            if existing_af:
+                                warnings.append(f"Hoja '{sheet_name}' - Fila {index + header_row_idx + 2}: El código de activo fijo '{activo_fijo}' en el equipo '{nombre_equipo}' ya pertenece a otro equipo registrado (Serie: {existing_af.serie}). Se dejó en blanco para este registro.")
+                                activo_fijo = None
+
+                        # Clasificar dinámicamente según nombre del equipo
+                        subcat = find_subcategoria(nombre_equipo)
+
+                        # 5. Buscar si el equipo ya existe (repetido por Serie) para actualizar
+                        equipo_existente = Equipo.objects.filter(serie__iexact=serie_clean).first()
+
+                        if equipo_existente:
+                            # Se repite. Aplicamos la acción de actualización correspondiente
+                            # A. Reasignar si viene un usuario diferente
+                            if usuario_asignado and equipo_existente.usuario_asignado != usuario_asignado:
+                                old_u = equipo_existente.usuario_asignado or "BODEGA"
+                                equipo_existente.usuario_asignado = usuario_asignado
+                                equipo_existente.estado = 'ASIGNADO'
+                                if fecha_asignacion:
+                                    equipo_existente.fecha_asignacion = fecha_asignacion
+                                elif not equipo_existente.fecha_asignacion:
+                                    equipo_existente.fecha_asignacion = datetime.date.today()
+                                equipo_existente.novedad = f"Reasignado en importación Excel de {old_u} a {usuario_asignado}"
+                            
+                            # B. Dar de baja si se indica
+                            if estado == 'BAJA' and equipo_existente.estado != 'BAJA':
+                                equipo_existente.estado = 'BAJA'
+                                equipo_existente.fecha_baja = fecha_baja or datetime.date.today()
+                                equipo_existente.novedad = novedad_raw or "Retirado en importación Excel"
+                            elif estado == 'REPARACION' and equipo_existente.estado != 'REPARACION':
+                                equipo_existente.estado = 'REPARACION'
+                                equipo_existente.novedad = novedad_raw or "Enviado a mantenimiento en importación Excel"
+                            elif estado == 'DISPONIBLE' and equipo_existente.estado not in ['DISPONIBLE', 'BAJA']:
+                                equipo_existente.estado = 'DISPONIBLE'
+                                equipo_existente.usuario_asignado = None
+                                equipo_existente.fecha_asignacion = None
+
+                            # C. Completar o actualizar otros datos más completos
+                            equipo_existente.nombre_equipo = nombre_equipo
+                            if subcat and not equipo_existente.subcategoria:
+                                equipo_existente.subcategoria = subcat
+                            if marca:
+                                equipo_existente.marca = marca
+                            if modelo:
+                                equipo_existente.modelo = modelo
+                            if activo_fijo:
+                                equipo_existente.activo_fijo = activo_fijo
+                            if departamento:
+                                equipo_existente.departamento = departamento
+                            if not equipo_existente.fecha_ingreso and fecha_ing:
+                                equipo_existente.fecha_ingreso = fecha_ing
+
+                            equipo_existente.save()
+                            updated_count += 1
+                        else:
+                            # 6. Crear un nuevo equipo en la BD
+                            Equipo.objects.create(
+                                creado_por=request.user,
+                                nombre_equipo=nombre_equipo,
+                                serie=serie_clean,
+                                marca=marca,
+                                modelo=modelo,
+                                activo_fijo=activo_fijo,
+                                estado=estado,
+                                usuario_asignado=usuario_asignado,
+                                departamento=departamento,
+                                novedad=novedad_raw or "Ingresado en importación Excel",
+                                fecha_ingreso=fecha_ing or datetime.date.today(),
+                                fecha_asignacion=fecha_asignacion,
+                                fecha_baja=fecha_baja,
+                                subcategoria=subcat
+                            )
+                            created_count += 1
+
+                    except Exception as row_err:
+                        errors.append(f"Hoja '{sheet_name}' - Fila {index + header_row_idx + 2}: {str(row_err)}")
+
+            # Construir reporte y resumen final detallado
+            msg = "Importación finalizada con éxito. "
+            if created_count > 0:
+                msg += f"Creados: {created_count} nuevos equipos. "
+            if updated_count > 0:
+                msg += f"Actualizados/Reasignados: {updated_count} equipos existentes. "
+            if skipped_count > 0:
+                msg += f"Omitidos por número de serie inválido: {skipped_count} filas. "
 
             return Response({
-                "message": f"Proceso finalizado. {created_count} registros creados.",
-                "errors": errors
-            })
+                "message": msg,
+                "errors": errors,
+                "warnings": warnings
+            }, status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response({"error": f"Error crítico al procesar archivo: {str(e)}"}, status=500)
+            return Response({"error": f"Error crítico al procesar archivo Excel: {str(e)}"}, status=500)
 
 # --- VISTA PARA REGISTRO DE USUARIOS ---
 @api_view(['POST'])

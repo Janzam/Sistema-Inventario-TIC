@@ -103,6 +103,7 @@ function App() {
         <CategoryView 
           category={selectedCategory} 
           initialSubcat={selectedSubcategory}
+          searchTerm={searchTerm}
           onBack={() => { 
             setView('dashboard'); 
             setSelectedCategory(null); 
@@ -143,7 +144,12 @@ function App() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
         <Header 
           equipos={equipos} 
-          onSearch={setSearchTerm} 
+          onSearch={(term) => {
+            setSearchTerm(term);
+            if (term && view === 'dashboard') {
+              setView('global');
+            }
+          }} 
           user={user} 
           onLogout={handleLogout} 
           onUpdateUser={handleUpdateUser} 
