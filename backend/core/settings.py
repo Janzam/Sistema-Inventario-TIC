@@ -87,6 +87,8 @@ if env('DATABASE_URL', default=None):
     DATABASES = {
         'default': env.db('DATABASE_URL')
     }
+    # Ensure connections are closed after each request so Neon can spin down
+    DATABASES['default']['CONN_MAX_AGE'] = 0
 else:
     DATABASES = {
         'default': {
@@ -98,8 +100,7 @@ else:
             'PORT': env('DB_PORT', default=''),
         }
     }
-
-DATABASES['default']['OPTIONS'] = {'sslmode': 'disable'}
+    DATABASES['default']['OPTIONS'] = {'sslmode': 'disable'}
 
 
 
